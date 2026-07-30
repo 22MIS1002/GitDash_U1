@@ -1,0 +1,48 @@
+name: "Discover Project V2 Field IDs"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  get-project-ids:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Project and Field IDs
+        uses: actions/github-script@v7
+        with:
+          # Uses the PAT we just added so it has permission to view User Projects V2
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const username = context.repo.owner; // Your GitHub username
+            const projectNumber = 3; // Replace with your Project Number from URL (e.g., /projects/1)
+
+            const query = `
+              query($username: String!, $number: Int!) {
+                user(login: $username) {
+                  projectV2(number: $number) {
+                    id
+                    title
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2Field {
+                          id
+                          name
+                          dataType
+                        }
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          dataType
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const variables = { username, number: projectNumber };
+            const result = await github.graphql(query, variables);
+            
+            console.log("Project Details:");
+            console.log(JSON.stringify(result.user.projectV2, null, 2));
