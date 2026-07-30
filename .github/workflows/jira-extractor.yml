@@ -1,15 +1,16 @@
-name: "Phase 1 - Parse Numeric JIRA Ticket from PR Branch"
+name: "PR Metrics Extractor"
 
 on:
   workflow_dispatch:
   schedule:
+    # Runs every night at midnight UTC
     - cron: '0 0 * * *'
 
 jobs:
-  extract-jira-keys:
+  collect-pr-metrics:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch PRs and Extract JIRA IDs
+      - name: Fetch and Parse PR Data
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -17,11 +18,50 @@ jobs:
             const query = `
               query($owner: String!, $repo: String!) {
                 repository(owner: $owner, name: $repo) {
-                  pullRequests(states: OPEN, first: 20) {
+                  pullRequests(
+                    states: [OPEN, MERGED, CLOSED], 
+                    first: 50, 
+                    orderBy: {field: UPDATED_AT, direction: DESC}
+                  ) {
                     nodes {
                       number
                       title
+                      body
+                      state
                       headRefName
+                      
+                      # (b) PR Labels (Task Type)
+                      labels(first: 10) {
+                        nodes {
+                          name
+                        }
+                      }
+
+                      # (d) Top-Level Issue Comments (General Discussion)
+                      comments(first: 100) {
+                        nodes {
+                          body
+                          author {
+                            login
+                            __typename
+                          }
+                        }
+                      }
+
+                      # (d) Review Threads (Inline Code Comments)
+                      reviewThreads(first: 100) {
+                        nodes {
+                          comments(first: 1) { # Top comment only (ignores replies!)
+                            nodes {
+                              body
+                              author {
+                                login
+                                __typename
+                              }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -36,20 +76,126 @@ jobs:
             const result = await github.graphql(query, variables);
             const pullRequests = result.repository.pullRequests.nodes;
 
-            // Matches standalone numbers (e.g. extracts '1234' from 'feature/1234-login-fix')
-            // Matches the first sequence of digits anywhere in the branch string
-            const jiraNumericRegex = /\d+/;
+            // Pattern to extract PR Defects (e.g., "PR Defects: 3" or "Defects: 2")
+            const defectRegex = /(?:PR\s*)?Defects?:\s*(\d+)/i;
 
             const processedData = pullRequests.map(pr => {
-              const match = pr.headRefName.match(jiraNumericRegex);
-              const jiraId = match ? match[0] : 'N/A';
-              
+              // a) Extract Numeric JIRA ID
+              const jiraMatch = pr.headRefName.match(/\d+/);
+              const jiraId = jiraMatch ? jiraMatch[0] : 'N/A';
+
+              // b) Task Type (Labels)
+              const labels = pr.labels.nodes.map(l => l.name);
+              const taskType = labels.length > 0 ? labels.join(', ') : 'Unlabeled';
+
+              // c) PR Basics
+              const prId = pr.number;
+              const prTitle = pr.title;
+              const prDesc = pr.body || 'No description provided';
+              const prState = pr.state;
+
+              let reviewCommentsCount = 0;
+              let botCommentsCount = 0;
+              let prDefectsCount = 0;
+
+              // Helper function to process individual root comments
+              const processComment = (body, author) => {
+                const isBot = author 
+                  ? (author.__typename === 'Bot' || author.login.endsWith('[bot]')) 
+                  : false;
+
+                if (isBot) {
+                  botCommentsCount++;
+                } else {
+                  reviewCommentsCount++;
+                }
+
+                // e) Extract defects mentioned in human comments
+                const defectMatch = body ? body.match(defectRegex) : null;
+                if (defectMatch) {
+                  prDefectsCount += parseInt(defectMatch[1], 10);
+                }
+              };
+
+              // Process Top-Level Issue Comments
+              pr.comments.nodes.forEach(c => processComment(c.body, c.author));
+
+              // Process Inline Diff Review Comments (Root/Thread Leaders Only)
+              pr.reviewThreads.nodes.forEach(thread => {
+                const rootComment = thread.comments.nodes[0];
+                if (rootComment) {
+                  processComment(rootComment.body, rootComment.author);
+                }
+              });
+
               return {
-                prId: pr.number,
-                title: pr.title,
-                branch: pr.headRefName,
-                jiraId: jiraId
+                jiraItem: jiraId,
+                taskType: taskType,
+                prId: prId,
+                prState: prState,
+                prTitle: prTitle,
+                prDesc: prDesc,
+                reviewComments: reviewCommentsCount,
+                botComments: botCommentsCount,
+                prDefects: prDefectsCount
               };
             });
 
-            console.log("Extracted Data:", JSON.stringify(processedData, null, 2));
+            console.log("Processed PR Metrics Data:");
+            console.log(JSON.stringify(processedData, null, 2));
+            
+# name: "Phase 1 - Parse Numeric JIRA Ticket from PR Branch"
+
+# on:
+#   workflow_dispatch:
+#   schedule:
+#     - cron: '0 0 * * *'
+
+# jobs:
+#   extract-jira-keys:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Fetch PRs and Extract JIRA IDs
+#         uses: actions/github-script@v7
+#         with:
+#           github-token: ${{ secrets.GITHUB_TOKEN }}
+#           script: |
+#             const query = `
+#               query($owner: String!, $repo: String!) {
+#                 repository(owner: $owner, name: $repo) {
+#                   pullRequests(states: OPEN, first: 20) {
+#                     nodes {
+#                       number
+#                       title
+#                       headRefName
+#                     }
+#                   }
+#                 }
+#               }
+#             `;
+
+#             const variables = {
+#               owner: context.repo.owner,
+#               repo: context.repo.repo
+#             };
+
+#             const result = await github.graphql(query, variables);
+#             const pullRequests = result.repository.pullRequests.nodes;
+
+#             // Matches standalone numbers (e.g. extracts '1234' from 'feature/1234-login-fix')
+#             // Matches the first sequence of digits anywhere in the branch string
+#             const jiraNumericRegex = /\d+/;
+
+#             const processedData = pullRequests.map(pr => {
+#               const match = pr.headRefName.match(jiraNumericRegex);
+#               const jiraId = match ? match[0] : 'N/A';
+              
+#               return {
+#                 prId: pr.number,
+#                 title: pr.title,
+#                 branch: pr.headRefName,
+#                 jiraId: jiraId
+#               };
+#             });
+
+#             console.log("Extracted Data:", JSON.stringify(processedData, null, 2));
