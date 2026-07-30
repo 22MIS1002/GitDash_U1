@@ -22,7 +22,7 @@ jobs:
                   projectV2(number: $number) {
                     id
                     title
-                    fields(first: 20) {
+                    fields(first: 50) {
                       nodes {
                         ... on ProjectV2Field {
                           id
