@@ -37,7 +37,8 @@ jobs:
             const pullRequests = result.repository.pullRequests.nodes;
 
             // Matches standalone numbers (e.g. extracts '1234' from 'feature/1234-login-fix')
-            const jiraNumericRegex = /\b\d{3,6}\b/;
+            // Matches the first sequence of digits anywhere in the branch string
+            const jiraNumericRegex = /\d+/;
 
             const processedData = pullRequests.map(pr => {
               const match = pr.headRefName.match(jiraNumericRegex);
