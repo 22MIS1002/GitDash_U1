@@ -1,0 +1,32 @@
+name: "Extract PR Metrics by Date Range"
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Start Date (YYYY-MM-DD)'
+        required: true
+        type: string
+      end_date:
+        description: 'End Date (YYYY-MM-DD)'
+        required: true
+        type: string
+
+jobs:
+  extract-metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Extraction Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          START_DATE: ${{ inputs.start_date }}
+          END_DATE: ${{ inputs.end_date }}
+        run: node .github/scripts/extract_metrics.js
