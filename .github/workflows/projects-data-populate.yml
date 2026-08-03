@@ -195,7 +195,7 @@ jobs:
                   
                   const defectMatch = cleanBody.match(defectRegex);
                   if (defectMatch) {
-                    prDefectsCount += parseInt(defectMatch[1], 10);
+                    prDefectsCount = parseInt(defectMatch[1], 10);
                   }
                 }
               };
