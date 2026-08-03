@@ -176,13 +176,28 @@ jobs:
               let prDefectsCount = 0;
 
               const processComment = (body, author) => {
-                const isBot = author ? (author.__typename === 'Bot' || author.login.endsWith('[bot]')) : false;
+                const isBot = author 
+                  ? (author.__typename === 'Bot' || author.login.endsWith('[bot]')) 
+                  : false;
 
-                if (isBot) botCommentsCount++;
-                else reviewCommentsCount++;
+                if (isBot) {
+                  botCommentsCount++;
+                } else {
+                  reviewCommentsCount++;
+                }
 
-                const defectMatch = body ? body.match(defectRegex) : null;
-                if (defectMatch) prDefectsCount += parseInt(defectMatch[1], 10);
+                if (body) {
+                  // 1. Sanitize the markdown: Replace *, _, |, ~, ` and HTML tags with spaces
+                  const cleanBody = body.replace(/[*_`~|]/g, ' ').replace(/<\/?[^>]+(>|$)/g, ' ');
+                  
+                  // 2. Enhanced Regex: Handles spaces, colons, hyphens, or equals signs before the number
+                  const defectRegex = /(?:PR\s*)?Defects?[\s:\-=]*(\d+)/i;
+                  
+                  const defectMatch = cleanBody.match(defectRegex);
+                  if (defectMatch) {
+                    prDefectsCount += parseInt(defectMatch[1], 10);
+                  }
+                }
               };
 
               pr.comments.nodes.forEach(c => processComment(c.body, c.author));
