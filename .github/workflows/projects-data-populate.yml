@@ -40,44 +40,44 @@ jobs:
             const PROJECT_ID = "..."; 
 
             const FIELD_IDS = {
-              jiraItems:            "...",       // Text
-              taskType:             "...",       // Text
-              prId:                 "...",       // Number
-              prTitle:              "...",       // Text
-              reviewComments:       "...",       // Number
-              botComments:          "...",       // Number
-              prDefects:            "...",       // Number
-              prStatus:             "...",       // Single Select
-              prCreatedDate:        "...",       // Date
-              prAuthor:             "...",       // Text
-              tiDefects:            "...",       // Number ([DEFECT])
-              prChecklist:          "...",       // Single Select
+              jiraItems:            "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
+              taskType:             "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
+              prId:                 "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",       // Number
+              prTitle:              "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",       // Text
+              reviewComments:       "PVTF_lAHOCbDnFc4Be6cgzhZRM20",       // Number
+              botComments:          "PVTF_lAHOCbDnFc4Be6cgzhZRnTo",       // Number
+              prDefects:            "PVTF_lAHOCbDnFc4Be6cgzhZRgsw",       // Number
+              prStatus:             "PVTSSF_lAHOCbDnFc4Be6cgzhZVWwU",       // Single Select
+              prCreatedDate:        "PVTF_lAHOCbDnFc4Be6cgzhZjmIo",       // Date
+              prAuthor:             "PVTF_lAHOCbDnFc4Be6cgzhZjmMA",       // Text
+              tiDefects:            "PVTF_lAHOCbDnFc4Be6cgzhZjmTE",       // Number ([DEFECT])
+              prChecklist:          "PVTSSF_lAHOCbDnFc4Be6cgzhZjmZM",       // Single Select
 
               // 13 Sub-Category Number Fields
-              questions:            "...",       // Number
-              major:                "...",       // Number
-              minor:                "...",       // Number
-              missing:              "...",       // Number
-              extraSuperfluous:     "...",       // Number
-              ambiguous:            "...",       // Number
-              inconsistent:         "...",       // Number
-              improvementDesirable: "...",       // Number
-              notConforming:        "...",       // Number
-              riskProne:            "...",       // Number
-              factuallyIncorrect:   "...",       // Number
-              notImplementable:     "...",       // Number
-              editorial:            "..."        // Number
+              questions:            "PVTF_lAHOCbDnFc4Be6cgzhZk_vY",       // Number
+              major:                "PVTF_lAHOCbDnFc4Be6cgzhZk_yw",       // Number
+              minor:                "PVTF_lAHOCbDnFc4Be6cgzhZk_6M",       // Number
+              missing:              "PVTF_lAHOCbDnFc4Be6cgzhZlACg",       // Number
+              extraSuperfluous:     "PVTF_lAHOCbDnFc4Be6cgzhZlANU",       // Number
+              ambiguous:            "PVTF_lAHOCbDnFc4Be6cgzhZlAVQ",       // Number
+              inconsistent:         "PVTF_lAHOCbDnFc4Be6cgzhZlAYc",       // Number
+              improvementDesirable: "PVTF_lAHOCbDnFc4Be6cgzhZlAnQ",       // Number
+              notConforming:        "PVTF_lAHOCbDnFc4Be6cgzhZlAqE",       // Number
+              riskProne:            "PVTF_lAHOCbDnFc4Be6cgzhZlAx8",       // Number
+              factuallyIncorrect:   "PVTF_lAHOCbDnFc4Be6cgzhZlA3Y",       // Number
+              notImplementable:     "PVTF_lAHOCbDnFc4Be6cgzhZlA9I",       // Number
+              editorial:            "PVTF_lAHOCbDnFc4Be6cgzhZlBCI"        // Number
             };
 
             const STATUS_OPTIONS = {
-              OPEN:   "...", 
-              MERGED: "...", 
-              CLOSED: "..."  
+              OPEN:   "a169abfa", 
+              MERGED: "c29cb3fa", 
+              CLOSED: "e18667b6"  
             };
 
             const CHECKLIST_OPTIONS = {
-              YES: "...", 
-              NO:  "..."  
+              YES: "4642dbc2", 
+              NO:  "f3665cfb"  
             };
 
             const LABEL_PATTERNS = {
