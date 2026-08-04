@@ -37,7 +37,7 @@ jobs:
             // =========================================================================
             // CONFIGURATION: Replace these with your exact Project V2 & Field IDs
             // =========================================================================
-            const PROJECT_ID = "..."; 
+            const PROJECT_ID = "PVT_kwHOCbDnFc4Be6cg"; 
 
             const FIELD_IDS = {
               jiraItems:            "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
