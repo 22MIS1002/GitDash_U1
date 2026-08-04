@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PR Analytics & Defect Dashboard</title>
+  <!-- Tailwind CSS & Chart.js via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-6">
+
+  <!-- Header -->
+  <header class="max-w-7xl mx-auto mb-8 flex justify-between items-center border-b border-gray-800 pb-4">
+    <div>
+      <h1 class="text-3xl font-bold text-blue-400">📊 PR Analytics & Quality Dashboard</h1>
+      <p class="text-sm text-gray-400 mt-1">Interactive Quality Metrics & Defect Classification Analytics</p>
+    </div>
+    <div id="last-updated" class="text-xs text-gray-500 bg-gray-800 px-3 py-2 rounded-lg border border-gray-700">
+      Loading metrics...
+    </div>
+  </header>
+
+  <!-- Interactive Filters -->
+  <section class="max-w-7xl mx-auto bg-gray-800 p-5 rounded-xl border border-gray-700 mb-8 shadow-lg">
+    <h2 class="text-lg font-semibold text-gray-200 mb-4">🔍 Filters & Slicers</h2>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Start Date</label>
+        <input type="date" id="filter-start-date" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">End Date</label>
+        <input type="date" id="filter-end-date" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">PR Author</label>
+        <select id="filter-author" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+          <option value="ALL">All Authors</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">PR Status</label>
+        <select id="filter-status" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+          <option value="ALL">All Statuses</option>
+          <option value="OPEN">OPEN</option>
+          <option value="MERGED">MERGED</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Search (JIRA / Title)</label>
+        <input type="text" id="filter-search" placeholder="Search..." class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+      </div>
+    </div>
+  </section>
+
+  <!-- KPI Cards -->
+  <section class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+    <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+      <p class="text-xs text-gray-400 uppercase">Total PRs</p>
+      <p id="kpi-total-prs" class="text-3xl font-bold text-white mt-1">0</p>
+    </div>
+    <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+      <p class="text-xs text-gray-400 uppercase">Total TI Defects</p>
+      <p id="kpi-ti-defects" class="text-3xl font-bold text-red-400 mt-1">0</p>
+    </div>
+    <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+      <p class="text-xs text-gray-400 uppercase">Major Defects</p>
+      <p id="kpi-major-defects" class="text-3xl font-bold text-orange-400 mt-1">0</p>
+    </div>
+    <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+      <p class="text-xs text-gray-400 uppercase">Minor Defects</p>
+      <p id="kpi-minor-defects" class="text-3xl font-bold text-yellow-400 mt-1">0</p>
+    </div>
+    <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 text-center">
+      <p class="text-xs text-gray-400 uppercase">Checklist Compliance</p>
+      <p id="kpi-checklist" class="text-3xl font-bold text-green-400 mt-1">0%</p>
+    </div>
+  </section>
+
+  <!-- Charts Grid -->
+  <section class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+    <!-- Pie Chart: All 13 Classifications -->
+    <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-lg">
+      <h3 class="text-md font-semibold text-gray-200 mb-4">🎯 Defect Classifications Breakdown</h3>
+      <div class="h-64 flex justify-center">
+        <canvas id="chart-classifications"></canvas>
+      </div>
+    </div>
+
+    <!-- Bar Chart: Major vs Minor by Status -->
+    <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-lg">
+      <h3 class="text-md font-semibold text-gray-200 mb-4">⚖️ Defect Severity by PR Status</h3>
+      <div class="h-64 flex justify-center">
+        <canvas id="chart-severity"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Data Table -->
+  <section class="max-w-7xl mx-auto bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-lg">
+    <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+      <h3 class="text-md font-semibold text-gray-200">📋 Filtered Pull Requests</h3>
+      <span id="table-count" class="text-xs text-gray-400">Showing 0 PRs</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-gray-300">
+        <thead class="bg-gray-900 text-gray-400 uppercase border-b border-gray-700">
+          <tr>
+            <th class="p-3">PR</th>
+            <th class="p-3">JIRA</th>
+            <th class="p-3">Title</th>
+            <th class="p-3">Author</th>
+            <th class="p-3">Created Date</th>
+            <th class="p-3">Status</th>
+            <th class="p-3 text-center">TI Defects</th>
+            <th class="p-3 text-center">Major</th>
+            <th class="p-3 text-center">Minor</th>
+            <th class="p-3 text-center">Checklist</th>
+          </tr>
+        </thead>
+        <tbody id="pr-table-body" class="divide-y divide-gray-700">
+          <!-- Rows inserted via JS -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Client-Side Dashboard Script -->
+  <script>
+    let rawPrsData = [];
+    let chartClassificationsInstance = null;
+    let chartSeverityInstance = null;
+
+    async function loadMetrics() {
+      try {
+        const response = await fetch('./metrics.json?t=' + new Date().getTime());
+        const data = await response.json();
+        rawPrsData = data.prs || [];
+        
+        document.getElementById('last-updated').innerText = `Last Updated: ${data.lastUpdated || 'N/A'}`;
+        
+        populateAuthorDropdown();
+        applyFiltersAndRender();
+      } catch (err) {
+        console.error("Error loading metrics.json:", err);
+        document.getElementById('last-updated').innerText = "Failed to load metrics.json";
+      }
+    }
+
+    function populateAuthorDropdown() {
+      const authorSelect = document.getElementById('filter-author');
+      const authors = [...new Set(rawPrsData.map(pr => pr.prAuthor).filter(Boolean))];
+      authors.forEach(auth => {
+        const opt = document.createElement('option');
+        opt.value = auth;
+        opt.textContent = auth;
+        authorSelect.appendChild(opt);
+      });
+    }
+
+    function applyFiltersAndRender() {
+      const startDate = document.getElementById('filter-start-date').value;
+      const endDate = document.getElementById('filter-end-date').value;
+      const author = document.getElementById('filter-author').value;
+      const status = document.getElementById('filter-status').value;
+      const search = document.getElementById('filter-search').value.toLowerCase();
+
+      const filtered = rawPrsData.filter(pr => {
+        if (startDate && pr.prCreatedDate < startDate) return false;
+        if (endDate && pr.prCreatedDate > endDate) return false;
+        if (author !== 'ALL' && pr.prAuthor !== author) return false;
+        if (status !== 'ALL' && pr.prStatus !== status) return false;
+        if (search && !pr.prTitle.toLowerCase().includes(search) && !pr.jiraItem.toLowerCase().includes(search)) return false;
+        return true;
+      });
+
+      renderKPIs(filtered);
+      renderCharts(filtered);
+      renderTable(filtered);
+    }
+
+    function renderKPIs(data) {
+      document.getElementById('kpi-total-prs').innerText = data.length;
+      const totalTI = data.reduce((acc, pr) => acc + (pr.tiDefects || 0), 0);
+      const totalMajor = data.reduce((acc, pr) => acc + (pr.major || 0), 0);
+      const totalMinor = data.reduce((acc, pr) => acc + (pr.minor || 0), 0);
+      const withChecklist = data.filter(pr => pr.prChecklist === 'YES').length;
+      const compliance = data.length > 0 ? Math.round((withChecklist / data.length) * 100) : 0;
+
+      document.getElementById('kpi-ti-defects').innerText = totalTI;
+      document.getElementById('kpi-major-defects').innerText = totalMajor;
+      document.getElementById('kpi-minor-defects').innerText = totalMinor;
+      document.getElementById('kpi-checklist').innerText = `${compliance}%`;
+    }
+
+    function renderCharts(data) {
+      // 1. Pie Chart: 13 Classifications
+      const classifications = {
+        'Missing': data.reduce((a, p) => a + (p.missing || 0), 0),
+        'Extra/Superfluous': data.reduce((a, p) => a + (p.extraSuperfluous || 0), 0),
+        'Ambiguous': data.reduce((a, p) => a + (p.ambiguous || 0), 0),
+        'Inconsistent': data.reduce((a, p) => a + (p.inconsistent || 0), 0),
+        'Improvement Desirable': data.reduce((a, p) => a + (p.improvementDesirable || 0), 0),
+        'Not Conforming': data.reduce((a, p) => a + (p.notConforming || 0), 0),
+        'Risk-Prone': data.reduce((a, p) => a + (p.riskProne || 0), 0),
+        'Factually Incorrect': data.reduce((a, p) => a + (p.factuallyIncorrect || 0), 0),
+        'Not Implementable': data.reduce((a, p) => a + (p.notImplementable || 0), 0),
+        'Editorial': data.reduce((a, p) => a + (p.editorial || 0), 0),
+        'Questions': data.reduce((a, p) => a + (p.questions || 0), 0)
+      };
+
+      const pieCtx = document.getElementById('chart-classifications').getContext('2d');
+      if (chartClassificationsInstance) chartClassificationsInstance.destroy();
+      
+      chartClassificationsInstance = new Chart(pieCtx, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(classifications),
+          datasets: [{
+            data: Object.values(classifications),
+            backgroundColor: [
+              '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
+              '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899'
+            ]
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#9ca3af', font: { size: 10 } } } } }
+      });
+
+      // 2. Bar Chart: Major vs Minor by Status
+      const statuses = ['OPEN', 'MERGED', 'CLOSED'];
+      const majorByStatus = statuses.map(s => data.filter(p => p.prStatus === s).reduce((a, p) => a + (p.major || 0), 0));
+      const minorByStatus = statuses.map(s => data.filter(p => p.prStatus === s).reduce((a, p) => a + (p.minor || 0), 0));
+
+      const barCtx = document.getElementById('chart-severity').getContext('2d');
+      if (chartSeverityInstance) chartSeverityInstance.destroy();
+
+      chartSeverityInstance = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: statuses,
+          datasets: [
+            { label: 'Major', data: majorByStatus, backgroundColor: '#f97316' },
+            { label: 'Minor', data: minorByStatus, backgroundColor: '#f59e0b' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+            y: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }
+          },
+          plugins: { legend: { labels: { color: '#9ca3af' } } }
+        }
+      });
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('pr-table-body');
+      tbody.innerHTML = '';
+      document.getElementById('table-count').innerText = `Showing ${data.length} PRs`;
+
+      data.forEach(pr => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-750 transition";
+        tr.innerHTML = `
+          <td class="p-3 font-mono text-blue-400">#${pr.prId}</td>
+          <td class="p-3 font-semibold text-gray-300">${pr.jiraItem}</td>
+          <td class="p-3 truncate max-w-xs" title="${pr.prTitle}">${pr.prTitle}</td>
+          <td class="p-3 text-gray-400">@${pr.prAuthor}</td>
+          <td class="p-3 text-gray-400">${pr.prCreatedDate}</td>
+          <td class="p-3"><span class="px-2 py-1 rounded text-xs font-semibold ${pr.prStatus === 'OPEN' ? 'bg-yellow-900 text-yellow-300' : pr.prStatus === 'MERGED' ? 'bg-purple-900 text-purple-300' : 'bg-gray-700 text-gray-300'}">${pr.prStatus}</span></td>
+          <td class="p-3 text-center font-bold text-red-400">${pr.tiDefects}</td>
+          <td class="p-3 text-center text-orange-400">${pr.major}</td>
+          <td class="p-3 text-center text-yellow-400">${pr.minor}</td>
+          <td class="p-3 text-center">${pr.prChecklist === 'YES' ? '🟢' : '🔴'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Attach Event Listeners
+    document.getElementById('filter-start-date').addEventListener('change', applyFiltersAndRender);
+    document.getElementById('filter-end-date').addEventListener('change', applyFiltersAndRender);
+    document.getElementById('filter-author').addEventListener('change', applyFiltersAndRender);
+    document.getElementById('filter-status').addEventListener('change', applyFiltersAndRender);
+    document.getElementById('filter-search').addEventListener('input', applyFiltersAndRender);
+
+    window.onload = loadMetrics;
+  </script>
+</body>
+</html>
