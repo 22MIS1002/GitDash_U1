@@ -1,4 +1,4 @@
-name: "PR Metrics to Project V2 Sync"
+name: "PR Metrics to Project V2 & Pages Sync"
 
 on:
   workflow_dispatch:
@@ -12,63 +12,74 @@ on:
     # Runs twice a day at 12:00 AM and 12:00 PM IST (6:30 PM and 6:30 AM UTC)
     - cron: '30 6,18 * * *'
 
+# Permissions required for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   sync-pr-metrics:
     runs-on: ubuntu-latest
     steps:
-      - name: Extract PR Metrics & Update Project V2
+      # Step 1: Checkout the repo so ./dashboards/index.html is available
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Extract PR Data, Update Project V2, and Generate dashboards/metrics.json
+      - name: Extract PR Metrics & Update Project V2 & JSON
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
+            const fs = require('fs');
+
             // =========================================================================
             // CONFIGURATION: Replace these with your exact Project V2 & Field IDs
             // =========================================================================
-            const PROJECT_ID = "PVT_kwHOCbDnFc4Be6cg"; 
+            const PROJECT_ID = "..."; 
 
             const FIELD_IDS = {
-              // Core & Existing Fields
-              jiraItems:            "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
-              taskType:             "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
-              prId:                 "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",       // Number
-              prTitle:              "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",       // Text
-              reviewComments:       "PVTF_lAHOCbDnFc4Be6cgzhZRM20",       // Number
-              botComments:          "PVTF_lAHOCbDnFc4Be6cgzhZRnTo",       // Number
-              prDefects:            "PVTF_lAHOCbDnFc4Be6cgzhZRgsw",       // Number
-              prStatus:             "PVTSSF_lAHOCbDnFc4Be6cgzhZVWwU",       // Single Select
-              prCreatedDate:        "PVTF_lAHOCbDnFc4Be6cgzhZjmIo",       // Date
-              prAuthor:             "PVTF_lAHOCbDnFc4Be6cgzhZjmMA",       // Text
-              tiDefects:            "PVTF_lAHOCbDnFc4Be6cgzhZjmTE",       // Number ([DEFECT])
-              prChecklist:          "PVTSSF_lAHOCbDnFc4Be6cgzhZjmZM",       // Single Select
+              jiraItems:            "...",       // Text
+              taskType:             "...",       // Text
+              prId:                 "...",       // Number
+              prTitle:              "...",       // Text
+              reviewComments:       "...",       // Number
+              botComments:          "...",       // Number
+              prDefects:            "...",       // Number
+              prStatus:             "...",       // Single Select
+              prCreatedDate:        "...",       // Date
+              prAuthor:             "...",       // Text
+              tiDefects:            "...",       // Number ([DEFECT])
+              prChecklist:          "...",       // Single Select
 
-              // NEW: 13 Sub-Category Number Fields
-              questions:            "PVTF_lAHOCbDnFc4Be6cgzhZk_vY",       // Number ([QUESTION])
-              major:                "PVTF_lAHOCbDnFc4Be6cgzhZk_yw",       // Number ([MAJOR])
-              minor:                "PVTF_lAHOCbDnFc4Be6cgzhZk_6M",       // Number ([MINOR])
-              missing:              "PVTF_lAHOCbDnFc4Be6cgzhZlACg",       // Number ([MISSING])
-              extraSuperfluous:     "PVTF_lAHOCbDnFc4Be6cgzhZlANU",       // Number ([EXTRA/SUPERFLUOUS])
-              ambiguous:            "PVTF_lAHOCbDnFc4Be6cgzhZlAVQ",       // Number ([AMBIGUOUS])
-              inconsistent:         "PVTF_lAHOCbDnFc4Be6cgzhZlAYc",       // Number ([INCONSISTENT])
-              improvementDesirable: "PVTF_lAHOCbDnFc4Be6cgzhZlAnQ",       // Number ([IMPROVEMENT DESIRABLE])
-              notConforming:        "PVTF_lAHOCbDnFc4Be6cgzhZlAqE",       // Number ([NOT CONFORMING TO STANDARDS])
-              riskProne:            "PVTF_lAHOCbDnFc4Be6cgzhZlAx8",       // Number ([RISK-PRONE])
-              factuallyIncorrect:   "PVTF_lAHOCbDnFc4Be6cgzhZlA3Y",       // Number ([FACTUALLY INCORRECT])
-              notImplementable:     "PVTF_lAHOCbDnFc4Be6cgzhZlA9I",       // Number ([NOT IMPLEMENTABLE])
-              editorial:            "PVTF_lAHOCbDnFc4Be6cgzhZlBCI"        // Number ([EDITORIAL])
+              // 13 Sub-Category Number Fields
+              questions:            "...",       // Number
+              major:                "...",       // Number
+              minor:                "...",       // Number
+              missing:              "...",       // Number
+              extraSuperfluous:     "...",       // Number
+              ambiguous:            "...",       // Number
+              inconsistent:         "...",       // Number
+              improvementDesirable: "...",       // Number
+              notConforming:        "...",       // Number
+              riskProne:            "...",       // Number
+              factuallyIncorrect:   "...",       // Number
+              notImplementable:     "...",       // Number
+              editorial:            "..."        // Number
             };
 
             const STATUS_OPTIONS = {
-              OPEN:   "a169abfa", 
-              MERGED: "c29cb3fa", 
-              CLOSED: "e18667b6"  
+              OPEN:   "...", 
+              MERGED: "...", 
+              CLOSED: "..."  
             };
 
             const CHECKLIST_OPTIONS = {
-              YES: "4642dbc2", 
-              NO:  "f3665cfb"  
+              YES: "...", 
+              NO:  "..."  
             };
 
-            // Regex patterns for Sub-Categories (Case-Insensitive)
             const LABEL_PATTERNS = {
               questions:            /\*\*\[QUESTION\]\*\*/i,
               major:                /\*\*\[MAJOR\]\*\*/i,
@@ -86,7 +97,7 @@ jobs:
             };
             // =========================================================================
 
-            // 1. Determine Search Query (Incremental vs Full)
+            // 1. Determine Search Query
             const isManualFullSync = context.payload.inputs?.fetch_all_historical === 'true';
             let searchQuery = `repo:${context.repo.owner}/${context.repo.repo} is:pr`;
 
@@ -168,12 +179,7 @@ jobs:
               cursor = result.search.pageInfo.endCursor;
             }
 
-            if (pullRequests.length === 0) {
-              console.log(`No PRs found matching criteria. Exiting.`);
-              return;
-            }
-
-            console.log(`Found ${pullRequests.length} PR(s) to sync.`);
+            console.log(`Found ${pullRequests.length} PR(s) to process.`);
 
             const addItemMutation = `
               mutation($projectId: ID!, $contentId: ID!) {
@@ -191,7 +197,9 @@ jobs:
               }
             `;
 
-            // 4. Process the PRs
+            const prsJsonArray = [];
+
+            // 4. Process PRs
             for (const pr of pullRequests) {
               if (!pr.number) continue; 
               
@@ -203,13 +211,11 @@ jobs:
               const taskType = labels.length > 0 ? labels.join(', ') : 'Unlabeled';
               const prState = pr.state; 
 
-              // Counters
               let reviewCommentsCount = 0;
               let botCommentsCount = 0;
               let prDefectsCount = 0;
               let tiDefectsCount = 0;
 
-              // Initialize sub-category counters
               const subCategoryCounts = {
                 questions: 0, major: 0, minor: 0, missing: 0,
                 extraSuperfluous: 0, ambiguous: 0, inconsistent: 0,
@@ -241,12 +247,10 @@ jobs:
                 if (rootComment && rootComment.body) {
                   processComment(rootComment.body, rootComment.author);
                   
-                  // Check for **[DEFECT]**
                   if (rootComment.body.match(/\*\*\[Defect\]\*\*/i)) {
                     tiDefectsCount++;
                   }
 
-                  // Check for all 13 Sub-Category Labels dynamically
                   for (const [key, pattern] of Object.entries(LABEL_PATTERNS)) {
                     if (rootComment.body.match(pattern)) {
                       subCategoryCounts[key]++;
@@ -270,53 +274,87 @@ jobs:
               }
               const checklistOptionId = hasChecklist ? CHECKLIST_OPTIONS.YES : CHECKLIST_OPTIONS.NO;
 
-              // STEP 1: Add or Get Item on Project Board
-              const itemResult = await github.graphql(addItemMutation, {
-                projectId: PROJECT_ID,
-                contentId: pr.id
-              });
-              const itemId = itemResult.addProjectV2ItemById.item.id;
+              // TARGET A: Update Projects V2
+              try {
+                const itemResult = await github.graphql(addItemMutation, {
+                  projectId: PROJECT_ID,
+                  contentId: pr.id
+                });
+                const itemId = itemResult.addProjectV2ItemById.item.id;
 
-              // STEP 2: Update Custom Fields
-              const updateField = async (fieldId, value) => {
-                if (!fieldId) return;
-                try {
-                  await github.graphql(updateFieldMutation, {
-                    projectId: PROJECT_ID, itemId: itemId, fieldId: fieldId, value: value
-                  });
-                } catch (error) {
-                  console.error(`Error updating field ID ${fieldId}:`, error.message);
+                const updateField = async (fieldId, value) => {
+                  if (!fieldId) return;
+                  try {
+                    await github.graphql(updateFieldMutation, {
+                      projectId: PROJECT_ID, itemId: itemId, fieldId: fieldId, value: value
+                    });
+                  } catch (e) { console.error(`Error updating field ${fieldId}:`, e.message); }
+                };
+
+                await updateField(FIELD_IDS.jiraItems,      { text: String(jiraId || "N/A") });
+                await updateField(FIELD_IDS.taskType,       { text: String(taskType || "Unlabeled") });
+                await updateField(FIELD_IDS.prTitle,        { text: String(pr.title || "No Title") });
+                await updateField(FIELD_IDS.prId,           { number: Number(pr.number || 0) });
+                await updateField(FIELD_IDS.reviewComments, { number: Number(reviewCommentsCount || 0) });
+                await updateField(FIELD_IDS.botComments,    { number: Number(botCommentsCount || 0) });
+                await updateField(FIELD_IDS.prDefects,      { number: Number(prDefectsCount || 0) });
+                await updateField(FIELD_IDS.prAuthor,       { text: String(pr.author?.login || "Unknown") });
+                await updateField(FIELD_IDS.prCreatedDate,  { date: pr.createdAt.substring(0, 10) });
+                await updateField(FIELD_IDS.tiDefects,      { number: Number(tiDefectsCount || 0) });
+                await updateField(FIELD_IDS.prChecklist,    { singleSelectOptionId: checklistOptionId });
+
+                const statusOptionId = STATUS_OPTIONS[prState];
+                if (statusOptionId) await updateField(FIELD_IDS.prStatus, { singleSelectOptionId: statusOptionId });
+
+                for (const [key, count] of Object.entries(subCategoryCounts)) {
+                  if (FIELD_IDS[key]) await updateField(FIELD_IDS[key], { number: Number(count || 0) });
                 }
-              };
-
-              // Update Standard Fields
-              await updateField(FIELD_IDS.jiraItems,      { text: String(jiraId || "N/A") });
-              await updateField(FIELD_IDS.taskType,       { text: String(taskType || "Unlabeled") });
-              await updateField(FIELD_IDS.prTitle,        { text: String(pr.title || "No Title") });
-              await updateField(FIELD_IDS.prId,           { number: Number(pr.number || 0) });
-              await updateField(FIELD_IDS.reviewComments, { number: Number(reviewCommentsCount || 0) });
-              await updateField(FIELD_IDS.botComments,    { number: Number(botCommentsCount || 0) });
-              await updateField(FIELD_IDS.prDefects,      { number: Number(prDefectsCount || 0) });
-              await updateField(FIELD_IDS.prAuthor,       { text: String(pr.author?.login || "Unknown") });
-              await updateField(FIELD_IDS.prCreatedDate,  { date: pr.createdAt.substring(0, 10) });
-              await updateField(FIELD_IDS.tiDefects,      { number: Number(tiDefectsCount || 0) });
-              await updateField(FIELD_IDS.prChecklist,    { singleSelectOptionId: checklistOptionId });
-
-              const statusOptionId = STATUS_OPTIONS[prState];
-              if (statusOptionId) await updateField(FIELD_IDS.prStatus, { singleSelectOptionId: statusOptionId });
-
-              // UPDATE NEW 13 SUB-CATEGORY FIELDS
-              for (const [key, count] of Object.entries(subCategoryCounts)) {
-                if (FIELD_IDS[key]) {
-                  await updateField(FIELD_IDS[key], { number: Number(count || 0) });
-                }
+              } catch (projErr) {
+                console.error(`Project V2 update warning for PR #${pr.number}:`, projErr.message);
               }
 
-              console.log(`Successfully synced PR #${pr.number}`);
+              // TARGET B: Construct Object for dashboards/metrics.json
+              prsJsonArray.push({
+                prId: pr.number,
+                jiraItem: jiraId,
+                prTitle: pr.title,
+                prAuthor: pr.author?.login || 'Unknown',
+                prCreatedDate: pr.createdAt.substring(0, 10),
+                prStatus: prState,
+                prChecklist: hasChecklist ? 'YES' : 'NO',
+                reviewComments: reviewCommentsCount,
+                botComments: botCommentsCount,
+                prDefects: prDefectsCount,
+                tiDefects: tiDefectsCount,
+                ...subCategoryCounts
+              });
             }
 
-# --------------------------------------------------------------------------------------------------------------------------------
+            // 5. Write metrics.json into ./dashboards directory
+            if (!fs.existsSync('./dashboards')) {
+              fs.mkdirSync('./dashboards');
+            }
 
+            const jsonPayload = {
+              lastUpdated: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
+              prs: prsJsonArray
+            };
+
+            fs.writeFileSync('./dashboards/metrics.json', JSON.stringify(jsonPayload, null, 2));
+            console.log("Successfully generated ./dashboards/metrics.json!");
+
+      # Step 3: Package the dashboards/ directory for GitHub Pages
+      - name: Upload GitHub Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dashboards'
+
+      # Step 4: Deploy Artifact to GitHub Pages CDN
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+# ============================================================================================================================
 # name: "PR Metrics to Project V2 Sync"
 
 # on:
@@ -328,7 +366,7 @@ jobs:
 #         type: boolean
 #         default: false
 #   schedule:
-#     # Runs twice a day at 12:00 AM and 12:00 PM IST (which is 6:30 PM and 6:30 AM UTC)
+#     # Runs twice a day at 12:00 AM and 12:00 PM IST (6:30 PM and 6:30 AM UTC)
 #     - cron: '30 6,18 * * *'
 
 # jobs:
@@ -346,20 +384,34 @@ jobs:
 #             const PROJECT_ID = "PVT_kwHOCbDnFc4Be6cg"; 
 
 #             const FIELD_IDS = {
-#               jiraItems:      "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
-#               taskType:       "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
-#               prId:           "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",       // Number
-#               prTitle:        "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",       // Text
-#               reviewComments: "PVTF_lAHOCbDnFc4Be6cgzhZRM20",       // Number
-#               botComments:    "PVTF_lAHOCbDnFc4Be6cgzhZRnTo",       // Number
-#               prDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZRgsw",       // Number
-#               prStatus:       "PVTSSF_lAHOCbDnFc4Be6cgzhZVWwU",       // Single Select
-              
-#               // NEW FIELDS
-#               prCreatedDate:  "PVTF_lAHOCbDnFc4Be6cgzhZjmIo",       // Date
-#               prAuthor:       "PVTF_lAHOCbDnFc4Be6cgzhZjmMA",       // Text
-#               tiDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZjmTE",       // Number
-#               prChecklist:    "PVTSSF_lAHOCbDnFc4Be6cgzhZjmZM"        // Single Select
+#               // Core & Existing Fields
+#               jiraItems:            "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
+#               taskType:             "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
+#               prId:                 "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",       // Number
+#               prTitle:              "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",       // Text
+#               reviewComments:       "PVTF_lAHOCbDnFc4Be6cgzhZRM20",       // Number
+#               botComments:          "PVTF_lAHOCbDnFc4Be6cgzhZRnTo",       // Number
+#               prDefects:            "PVTF_lAHOCbDnFc4Be6cgzhZRgsw",       // Number
+#               prStatus:             "PVTSSF_lAHOCbDnFc4Be6cgzhZVWwU",       // Single Select
+#               prCreatedDate:        "PVTF_lAHOCbDnFc4Be6cgzhZjmIo",       // Date
+#               prAuthor:             "PVTF_lAHOCbDnFc4Be6cgzhZjmMA",       // Text
+#               tiDefects:            "PVTF_lAHOCbDnFc4Be6cgzhZjmTE",       // Number ([DEFECT])
+#               prChecklist:          "PVTSSF_lAHOCbDnFc4Be6cgzhZjmZM",       // Single Select
+
+#               // NEW: 13 Sub-Category Number Fields
+#               questions:            "PVTF_lAHOCbDnFc4Be6cgzhZk_vY",       // Number ([QUESTION])
+#               major:                "PVTF_lAHOCbDnFc4Be6cgzhZk_yw",       // Number ([MAJOR])
+#               minor:                "PVTF_lAHOCbDnFc4Be6cgzhZk_6M",       // Number ([MINOR])
+#               missing:              "PVTF_lAHOCbDnFc4Be6cgzhZlACg",       // Number ([MISSING])
+#               extraSuperfluous:     "PVTF_lAHOCbDnFc4Be6cgzhZlANU",       // Number ([EXTRA/SUPERFLUOUS])
+#               ambiguous:            "PVTF_lAHOCbDnFc4Be6cgzhZlAVQ",       // Number ([AMBIGUOUS])
+#               inconsistent:         "PVTF_lAHOCbDnFc4Be6cgzhZlAYc",       // Number ([INCONSISTENT])
+#               improvementDesirable: "PVTF_lAHOCbDnFc4Be6cgzhZlAnQ",       // Number ([IMPROVEMENT DESIRABLE])
+#               notConforming:        "PVTF_lAHOCbDnFc4Be6cgzhZlAqE",       // Number ([NOT CONFORMING TO STANDARDS])
+#               riskProne:            "PVTF_lAHOCbDnFc4Be6cgzhZlAx8",       // Number ([RISK-PRONE])
+#               factuallyIncorrect:   "PVTF_lAHOCbDnFc4Be6cgzhZlA3Y",       // Number ([FACTUALLY INCORRECT])
+#               notImplementable:     "PVTF_lAHOCbDnFc4Be6cgzhZlA9I",       // Number ([NOT IMPLEMENTABLE])
+#               editorial:            "PVTF_lAHOCbDnFc4Be6cgzhZlBCI"        // Number ([EDITORIAL])
 #             };
 
 #             const STATUS_OPTIONS = {
@@ -369,8 +421,25 @@ jobs:
 #             };
 
 #             const CHECKLIST_OPTIONS = {
-#               YES: "4642dbc2", // Option ID for "Yes"
-#               NO:  "f3665cfb"  // Option ID for "No"
+#               YES: "4642dbc2", 
+#               NO:  "f3665cfb"  
+#             };
+
+#             // Regex patterns for Sub-Categories (Case-Insensitive)
+#             const LABEL_PATTERNS = {
+#               questions:            /\*\*\[QUESTION\]\*\*/i,
+#               major:                /\*\*\[MAJOR\]\*\*/i,
+#               minor:                /\*\*\[MINOR\]\*\*/i,
+#               missing:              /\*\*\[MISSING\]\*\*/i,
+#               extraSuperfluous:     /\*\*\[EXTRA\/SUPERFLUOUS\]\*\*/i,
+#               ambiguous:            /\*\*\[AMBIGUOUS\]\*\*/i,
+#               inconsistent:         /\*\*\[INCONSISTENT\]\*\*/i,
+#               improvementDesirable: /\*\*\[IMPROVEMENT DESIRABLE\]\*\*/i,
+#               notConforming:        /\*\*\[NOT CONFORMING TO STANDARDS\]\*\*/i,
+#               riskProne:            /\*\*\[RISK-PRONE\]\*\*/i,
+#               factuallyIncorrect:   /\*\*\[FACTUALLY INCORRECT\]\*\*/i,
+#               notImplementable:     /\*\*\[NOT IMPLEMENTABLE\]\*\*/i,
+#               editorial:            /\*\*\[EDITORIAL\]\*\*/i
 #             };
 #             // =========================================================================
 
@@ -381,13 +450,12 @@ jobs:
 #             if (isManualFullSync) {
 #               console.log("Triggered Manual Full Sync: Fetching ALL historical PRs.");
 #             } else {
-#               // Calculate 24 hours ago in ISO format
 #               const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 #               searchQuery += ` updated:>=${yesterday}`;
 #               console.log(`Incremental Sync: Fetching PRs updated since ${yesterday}`);
 #             }
 
-#             // 2. GraphQL Query with Pagination & Status Checks
+#             // 2. GraphQL Query
 #             const query = `
 #               query($searchQuery: String!, $cursor: String) {
 #                 search(query: $searchQuery, type: ISSUE, first: 100, after: $cursor) {
@@ -404,25 +472,16 @@ jobs:
 #                       state
 #                       headRefName
 #                       createdAt
-#                       author {
-#                         login
-#                       }
+#                       author { login }
                       
-#                       # Check for Markdown/Checklist Status
 #                       commits(last: 1) {
 #                         nodes {
 #                           commit {
 #                             statusCheckRollup {
 #                               contexts(first: 50) {
 #                                 nodes {
-#                                   ... on StatusContext {
-#                                     context
-#                                     state
-#                                   }
-#                                   ... on CheckRun {
-#                                     name
-#                                     conclusion
-#                                   }
+#                                   ... on StatusContext { context state }
+#                                   ... on CheckRun { name conclusion }
 #                                 }
 #                               }
 #                             }
@@ -453,7 +512,7 @@ jobs:
 #               }
 #             `;
 
-#             // 3. Fetch Data (Handling Pagination for large histories)
+#             // 3. Fetch Data with Pagination
 #             let pullRequests = [];
 #             let hasNextPage = true;
 #             let cursor = null;
@@ -461,10 +520,7 @@ jobs:
 #             while (hasNextPage) {
 #               const variables = { searchQuery, cursor };
 #               const result = await github.graphql(query, variables);
-              
-#               const nodes = result.search.nodes;
-#               pullRequests.push(...nodes);
-              
+#               pullRequests.push(...result.search.nodes);
 #               hasNextPage = result.search.pageInfo.hasNextPage;
 #               cursor = result.search.pageInfo.endCursor;
 #             }
@@ -504,11 +560,19 @@ jobs:
 #               const taskType = labels.length > 0 ? labels.join(', ') : 'Unlabeled';
 #               const prState = pr.state; 
 
-#               // a) Core Metrics processing
+#               // Counters
 #               let reviewCommentsCount = 0;
 #               let botCommentsCount = 0;
 #               let prDefectsCount = 0;
-#               let tiDefectsCount = 0; // NEW: TI Defects counter
+#               let tiDefectsCount = 0;
+
+#               // Initialize sub-category counters
+#               const subCategoryCounts = {
+#                 questions: 0, major: 0, minor: 0, missing: 0,
+#                 extraSuperfluous: 0, ambiguous: 0, inconsistent: 0,
+#                 improvementDesirable: 0, notConforming: 0, riskProne: 0,
+#                 factuallyIncorrect: 0, notImplementable: 0, editorial: 0
+#               };
 
 #               const processComment = (body, author) => {
 #                 const isBot = author ? (author.__typename === 'Bot' || author.login.endsWith('[bot]')) : false;
@@ -528,20 +592,27 @@ jobs:
 #               // Process Standard Comments
 #               pr.comments.nodes.forEach(c => processComment(c.body, c.author));
               
-#               // Process Inline Review Comments & Check for TI Defects
+#               // Process Inline Review Comments
 #               pr.reviewThreads.nodes.forEach(thread => {
 #                 const rootComment = thread.comments.nodes[0];
-#                 if (rootComment) {
+#                 if (rootComment && rootComment.body) {
 #                   processComment(rootComment.body, rootComment.author);
                   
-#                   // NEW: Check strictly for exactly **[Defect]** (case-insensitive)
-#                   if (rootComment.body && rootComment.body.match(/\*\*\[Defect\]\*\*/i)) {
+#                   // Check for **[DEFECT]**
+#                   if (rootComment.body.match(/\*\*\[Defect\]\*\*/i)) {
 #                     tiDefectsCount++;
+#                   }
+
+#                   // Check for all 13 Sub-Category Labels dynamically
+#                   for (const [key, pattern] of Object.entries(LABEL_PATTERNS)) {
+#                     if (rootComment.body.match(pattern)) {
+#                       subCategoryCounts[key]++;
+#                     }
 #                   }
 #                 }
 #               });
 
-#               // b) Process Checklist Status (Option C Implementation)
+#               // Process Checklist Status
 #               let hasChecklist = false;
 #               const commits = pr.commits?.nodes?.[0]?.commit;
 #               const contexts = commits?.statusCheckRollup?.contexts?.nodes || [];
@@ -549,9 +620,7 @@ jobs:
 #               for (const check of contexts) {
 #                 const name = check.context || check.name;
 #                 const state = check.state || check.conclusion;
-                
-#                 // If the check is named prti-check and its state is SUCCESS
-#                 if (name === 'prti-check' && (state === 'SUCCESS' || state === 'SUCCESS')) {
+#                 if (name === 'prti-check' && state === 'SUCCESS') {
 #                   hasChecklist = true;
 #                   break;
 #                 }
@@ -565,7 +634,7 @@ jobs:
 #               });
 #               const itemId = itemResult.addProjectV2ItemById.item.id;
 
-#               // STEP 2: Update Custom Fields safely
+#               // STEP 2: Update Custom Fields
 #               const updateField = async (fieldId, value) => {
 #                 if (!fieldId) return;
 #                 try {
@@ -577,45 +646,47 @@ jobs:
 #                 }
 #               };
 
-#               // Update Fields
-#               await updateField(FIELD_IDS.jiraItems, { text: String(jiraId || "N/A") });
-#               await updateField(FIELD_IDS.taskType,  { text: String(taskType || "Unlabeled") });
-#               await updateField(FIELD_IDS.prTitle,   { text: String(pr.title || "No Title") });
+#               // Update Standard Fields
+#               await updateField(FIELD_IDS.jiraItems,      { text: String(jiraId || "N/A") });
+#               await updateField(FIELD_IDS.taskType,       { text: String(taskType || "Unlabeled") });
+#               await updateField(FIELD_IDS.prTitle,        { text: String(pr.title || "No Title") });
 #               await updateField(FIELD_IDS.prId,           { number: Number(pr.number || 0) });
 #               await updateField(FIELD_IDS.reviewComments, { number: Number(reviewCommentsCount || 0) });
 #               await updateField(FIELD_IDS.botComments,    { number: Number(botCommentsCount || 0) });
 #               await updateField(FIELD_IDS.prDefects,      { number: Number(prDefectsCount || 0) });
-              
-#               // Map the GraphQL state (OPEN/MERGED/CLOSED) to your specific Option ID
+#               await updateField(FIELD_IDS.prAuthor,       { text: String(pr.author?.login || "Unknown") });
+#               await updateField(FIELD_IDS.prCreatedDate,  { date: pr.createdAt.substring(0, 10) });
+#               await updateField(FIELD_IDS.tiDefects,      { number: Number(tiDefectsCount || 0) });
+#               await updateField(FIELD_IDS.prChecklist,    { singleSelectOptionId: checklistOptionId });
+
 #               const statusOptionId = STATUS_OPTIONS[prState];
 #               if (statusOptionId) await updateField(FIELD_IDS.prStatus, { singleSelectOptionId: statusOptionId });
 
-#               // NEW FIELDS UPDATE
-#               await updateField(FIELD_IDS.prAuthor, { text: String(pr.author?.login || "Unknown") });
-#               // Date fields require 'YYYY-MM-DD' format, so we slice the ISO string
-#               await updateField(FIELD_IDS.prCreatedDate, { date: pr.createdAt.substring(0, 10) });
-#               await updateField(FIELD_IDS.tiDefects, { number: Number(tiDefectsCount || 0) });
-#               await updateField(FIELD_IDS.prChecklist, { singleSelectOptionId: checklistOptionId });
+#               // UPDATE NEW 13 SUB-CATEGORY FIELDS
+#               for (const [key, count] of Object.entries(subCategoryCounts)) {
+#                 if (FIELD_IDS[key]) {
+#                   await updateField(FIELD_IDS[key], { number: Number(count || 0) });
+#                 }
+#               }
 
 #               console.log(`Successfully synced PR #${pr.number}`);
 #             }
+
+# # --------------------------------------------------------------------------------------------------------------------------------
 
 # # name: "PR Metrics to Project V2 Sync"
 
 # # on:
 # #   workflow_dispatch:
 # #     inputs:
-# #       start_date:
-# #         description: 'Start Date (YYYY-MM-DD)'
+# #       fetch_all_historical:
+# #         description: 'Fetch ALL historical PRs? (Check for first-time setup, leave unchecked for last 24hrs)'
 # #         required: false
-# #         type: string
-# #       end_date:
-# #         description: 'End Date (YYYY-MM-DD)'
-# #         required: false
-# #         type: string
+# #         type: boolean
+# #         default: false
 # #   schedule:
-# #     # Runs every night at midnight UTC
-# #     - cron: '0 0 * * *'
+# #     # Runs twice a day at 12:00 AM and 12:00 PM IST (which is 6:30 PM and 6:30 AM UTC)
+# #     - cron: '30 6,18 * * *'
 
 # # jobs:
 # #   sync-pr-metrics:
@@ -636,66 +707,91 @@ jobs:
 # #               taskType:       "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
 # #               prId:           "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",       // Number
 # #               prTitle:        "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",       // Text
-# #               prDesc:         "PVTF_lAHOCbDnFc4Be6cgzhZRMx4",       // Text
 # #               reviewComments: "PVTF_lAHOCbDnFc4Be6cgzhZRM20",       // Number
 # #               botComments:    "PVTF_lAHOCbDnFc4Be6cgzhZRnTo",       // Number
 # #               prDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZRgsw",       // Number
-# #               dateRange:      "PVTF_lAHOCbDnFc4Be6cgzhZVWCo",       // NEW: Text
-# #               prStatus:       "PVTSSF_lAHOCbDnFc4Be6cgzhZVWwU"        // NEW: Single Select
+# #               prStatus:       "PVTSSF_lAHOCbDnFc4Be6cgzhZVWwU",       // Single Select
+              
+# #               // NEW FIELDS
+# #               prCreatedDate:  "PVTF_lAHOCbDnFc4Be6cgzhZjmIo",       // Date
+# #               prAuthor:       "PVTF_lAHOCbDnFc4Be6cgzhZjmMA",       // Text
+# #               tiDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZjmTE",       // Number
+# #               prChecklist:    "PVTSSF_lAHOCbDnFc4Be6cgzhZjmZM"        // Single Select
 # #             };
 
-# #             // NEW: Replace with the Option IDs you got from the extractor workflow
 # #             const STATUS_OPTIONS = {
 # #               OPEN:   "a169abfa", 
 # #               MERGED: "c29cb3fa", 
 # #               CLOSED: "e18667b6"  
 # #             };
+
+# #             const CHECKLIST_OPTIONS = {
+# #               YES: "4642dbc2", // Option ID for "Yes"
+# #               NO:  "f3665cfb"  // Option ID for "No"
+# #             };
 # #             // =========================================================================
 
-# #             // 1. Handle Date Logic
-# #             let startDate = context.payload.inputs?.start_date;
-# #             let endDate = context.payload.inputs?.end_date;
+# #             // 1. Determine Search Query (Incremental vs Full)
+# #             const isManualFullSync = context.payload.inputs?.fetch_all_historical === 'true';
+# #             let searchQuery = `repo:${context.repo.owner}/${context.repo.repo} is:pr`;
 
-# #             // If triggered by schedule (or user left inputs blank), default to the last 7 days
-# #             if (!startDate || !endDate) {
-# #               const today = new Date();
-# #               const sevenDaysAgo = new Date();
-# #               sevenDaysAgo.setDate(today.getDate() - 7);
-              
-# #               endDate = today.toISOString().split('T')[0];
-# #               startDate = sevenDaysAgo.toISOString().split('T')[0];
-# #               console.log(`No dates provided. Defaulting to last 7 days: ${startDate} to ${endDate}`);
+# #             if (isManualFullSync) {
+# #               console.log("Triggered Manual Full Sync: Fetching ALL historical PRs.");
+# #             } else {
+# #               // Calculate 24 hours ago in ISO format
+# #               const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+# #               searchQuery += ` updated:>=${yesterday}`;
+# #               console.log(`Incremental Sync: Fetching PRs updated since ${yesterday}`);
 # #             }
 
-# #             const dateRangeText = `${startDate}_to_${endDate}`;
-# #             const searchQuery = `repo:${context.repo.owner}/${context.repo.repo} is:pr created:${startDate}..${endDate}`;
-# #             console.log(`Executing Search Query: ${searchQuery}`);
-
-# #             // 2. Updated GraphQL Query (Using Search API instead of fetching all PRs)
+# #             // 2. GraphQL Query with Pagination & Status Checks
 # #             const query = `
-# #               query($searchQuery: String!) {
-# #                 search(query: $searchQuery, type: ISSUE, first: 100) {
+# #               query($searchQuery: String!, $cursor: String) {
+# #                 search(query: $searchQuery, type: ISSUE, first: 100, after: $cursor) {
+# #                   pageInfo {
+# #                     hasNextPage
+# #                     endCursor
+# #                   }
 # #                   nodes {
 # #                     ... on PullRequest {
 # #                       id
 # #                       number
 # #                       title
 # #                       body
-# #                       state # Returns OPEN, MERGED, or CLOSED
+# #                       state
 # #                       headRefName
+# #                       createdAt
+# #                       author {
+# #                         login
+# #                       }
                       
-# #                       labels(first: 10) {
+# #                       # Check for Markdown/Checklist Status
+# #                       commits(last: 1) {
 # #                         nodes {
-# #                           name
+# #                           commit {
+# #                             statusCheckRollup {
+# #                               contexts(first: 50) {
+# #                                 nodes {
+# #                                   ... on StatusContext {
+# #                                     context
+# #                                     state
+# #                                   }
+# #                                   ... on CheckRun {
+# #                                     name
+# #                                     conclusion
+# #                                   }
+# #                                 }
+# #                               }
+# #                             }
+# #                           }
 # #                         }
 # #                       }
+                      
+# #                       labels(first: 10) { nodes { name } }
 # #                       comments(first: 100) {
 # #                         nodes {
 # #                           body
-# #                           author {
-# #                             login
-# #                             __typename
-# #                           }
+# #                           author { login __typename }
 # #                         }
 # #                       }
 # #                       reviewThreads(first: 100) {
@@ -703,10 +799,7 @@ jobs:
 # #                           comments(first: 1) {
 # #                             nodes {
 # #                               body
-# #                               author {
-# #                                 login
-# #                                 __typename
-# #                               }
+# #                               author { login __typename }
 # #                             }
 # #                           }
 # #                         }
@@ -717,16 +810,28 @@ jobs:
 # #               }
 # #             `;
 
-# #             const variables = { searchQuery: searchQuery };
-# #             const result = await github.graphql(query, variables);
-# #             const pullRequests = result.search.nodes;
+# #             // 3. Fetch Data (Handling Pagination for large histories)
+# #             let pullRequests = [];
+# #             let hasNextPage = true;
+# #             let cursor = null;
+
+# #             while (hasNextPage) {
+# #               const variables = { searchQuery, cursor };
+# #               const result = await github.graphql(query, variables);
+              
+# #               const nodes = result.search.nodes;
+# #               pullRequests.push(...nodes);
+              
+# #               hasNextPage = result.search.pageInfo.hasNextPage;
+# #               cursor = result.search.pageInfo.endCursor;
+# #             }
 
 # #             if (pullRequests.length === 0) {
-# #               console.log(`No PRs found created between ${startDate} and ${endDate}. Exiting.`);
+# #               console.log(`No PRs found matching criteria. Exiting.`);
 # #               return;
 # #             }
 
-# #             const defectRegex = /(?:PR\s*)?Defects?:\s*(\d+)/i;
+# #             console.log(`Found ${pullRequests.length} PR(s) to sync.`);
 
 # #             const addItemMutation = `
 # #               mutation($projectId: ID!, $contentId: ID!) {
@@ -739,62 +844,37 @@ jobs:
 # #             const updateFieldMutation = `
 # #               mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
 # #                 updateProjectV2ItemFieldValue(
-# #                   input: {
-# #                     projectId: $projectId,
-# #                     itemId: $itemId,
-# #                     fieldId: $fieldId,
-# #                     value: $value
-# #                   }
-# #                 ) {
-# #                   projectV2Item { id }
-# #                 }
+# #                   input: { projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: $value }
+# #                 ) { projectV2Item { id } }
 # #               }
 # #             `;
 
-# #             // 3. Process the PRs
+# #             // 4. Process the PRs
 # #             for (const pr of pullRequests) {
-# #               // Ensure we are only processing PR objects (safety check)
 # #               if (!pr.number) continue; 
               
 # #               console.log(`Processing PR #${pr.number}: ${pr.title}`);
 
-# #               // JIRA ID Extraction
 # #               const jiraMatch = pr.headRefName.match(/\d+/);
 # #               const jiraId = jiraMatch ? jiraMatch[0] : 'N/A';
-
-# #               // Task Type (Labels)
 # #               const labels = pr.labels.nodes.map(l => l.name);
 # #               const taskType = labels.length > 0 ? labels.join(', ') : 'Unlabeled';
+# #               const prState = pr.state; 
 
-# #               // PR Details
-# #               const prId = pr.number;
-# #               const prTitle = pr.title;
-# #               const prDesc = pr.body || 'No description provided';
-# #               const prState = pr.state; // Will be 'OPEN', 'MERGED', or 'CLOSED'
-
-# #               // Comment & Bot Counting
+# #               // a) Core Metrics processing
 # #               let reviewCommentsCount = 0;
 # #               let botCommentsCount = 0;
 # #               let prDefectsCount = 0;
+# #               let tiDefectsCount = 0; // NEW: TI Defects counter
 
 # #               const processComment = (body, author) => {
-# #                 const isBot = author 
-# #                   ? (author.__typename === 'Bot' || author.login.endsWith('[bot]')) 
-# #                   : false;
-
-# #                 if (isBot) {
-# #                   botCommentsCount++;
-# #                 } else {
-# #                   reviewCommentsCount++;
-# #                 }
+# #                 const isBot = author ? (author.__typename === 'Bot' || author.login.endsWith('[bot]')) : false;
+# #                 if (isBot) botCommentsCount++;
+# #                 else reviewCommentsCount++;
 
 # #                 if (body) {
-# #                   // 1. Sanitize the markdown: Replace *, _, |, ~, ` and HTML tags with spaces
 # #                   const cleanBody = body.replace(/[*_`~|]/g, ' ').replace(/<\/?[^>]+(>|$)/g, ' ');
-                  
-# #                   // 2. Enhanced Regex: Handles spaces, colons, hyphens, or equals signs before the number
 # #                   const defectRegex = /(?:PR\s*)?Defects?[\s:\-=]*(\d+)/i;
-                  
 # #                   const defectMatch = cleanBody.match(defectRegex);
 # #                   if (defectMatch) {
 # #                     prDefectsCount = parseInt(defectMatch[1], 10);
@@ -802,18 +882,44 @@ jobs:
 # #                 }
 # #               };
 
+# #               // Process Standard Comments
 # #               pr.comments.nodes.forEach(c => processComment(c.body, c.author));
+              
+# #               // Process Inline Review Comments & Check for TI Defects
 # #               pr.reviewThreads.nodes.forEach(thread => {
 # #                 const rootComment = thread.comments.nodes[0];
-# #                 if (rootComment) processComment(rootComment.body, rootComment.author);
+# #                 if (rootComment) {
+# #                   processComment(rootComment.body, rootComment.author);
+                  
+# #                   // NEW: Check strictly for exactly **[Defect]** (case-insensitive)
+# #                   if (rootComment.body && rootComment.body.match(/\*\*\[Defect\]\*\*/i)) {
+# #                     tiDefectsCount++;
+# #                   }
+# #                 }
 # #               });
 
-# #               // STEP 1: Add PR to Project V2 (or fetch existing item ID)
+# #               // b) Process Checklist Status (Option C Implementation)
+# #               let hasChecklist = false;
+# #               const commits = pr.commits?.nodes?.[0]?.commit;
+# #               const contexts = commits?.statusCheckRollup?.contexts?.nodes || [];
+              
+# #               for (const check of contexts) {
+# #                 const name = check.context || check.name;
+# #                 const state = check.state || check.conclusion;
+                
+# #                 // If the check is named prti-check and its state is SUCCESS
+# #                 if (name === 'prti-check' && (state === 'SUCCESS' || state === 'SUCCESS')) {
+# #                   hasChecklist = true;
+# #                   break;
+# #                 }
+# #               }
+# #               const checklistOptionId = hasChecklist ? CHECKLIST_OPTIONS.YES : CHECKLIST_OPTIONS.NO;
+
+# #               // STEP 1: Add or Get Item on Project Board
 # #               const itemResult = await github.graphql(addItemMutation, {
 # #                 projectId: PROJECT_ID,
 # #                 contentId: pr.id
 # #               });
-
 # #               const itemId = itemResult.addProjectV2ItemById.item.id;
 
 # #               // STEP 2: Update Custom Fields safely
@@ -821,46 +927,49 @@ jobs:
 # #                 if (!fieldId) return;
 # #                 try {
 # #                   await github.graphql(updateFieldMutation, {
-# #                     projectId: PROJECT_ID,
-# #                     itemId: itemId,
-# #                     fieldId: fieldId,
-# #                     value: value
+# #                     projectId: PROJECT_ID, itemId: itemId, fieldId: fieldId, value: value
 # #                   });
 # #                 } catch (error) {
 # #                   console.error(`Error updating field ID ${fieldId}:`, error.message);
 # #                 }
 # #               };
 
-# #               // Update Existing Fields
+# #               // Update Fields
 # #               await updateField(FIELD_IDS.jiraItems, { text: String(jiraId || "N/A") });
 # #               await updateField(FIELD_IDS.taskType,  { text: String(taskType || "Unlabeled") });
-# #               await updateField(FIELD_IDS.prTitle,   { text: String(prTitle || "No Title") });
-# #               await updateField(FIELD_IDS.prDesc,    { text: String(prDesc || "No Description") });
-# #               await updateField(FIELD_IDS.prId,           { number: Number(prId || 0) });
+# #               await updateField(FIELD_IDS.prTitle,   { text: String(pr.title || "No Title") });
+# #               await updateField(FIELD_IDS.prId,           { number: Number(pr.number || 0) });
 # #               await updateField(FIELD_IDS.reviewComments, { number: Number(reviewCommentsCount || 0) });
 # #               await updateField(FIELD_IDS.botComments,    { number: Number(botCommentsCount || 0) });
 # #               await updateField(FIELD_IDS.prDefects,      { number: Number(prDefectsCount || 0) });
-
-# #               // NEW STEP 3: Update New Fields (Date Range and PR Status)
-# #               await updateField(FIELD_IDS.dateRange, { text: dateRangeText });
               
 # #               // Map the GraphQL state (OPEN/MERGED/CLOSED) to your specific Option ID
 # #               const statusOptionId = STATUS_OPTIONS[prState];
-# #               if (statusOptionId) {
-# #                 // Notice the syntax difference: singleSelectOptionId instead of text
-# #                 await updateField(FIELD_IDS.prStatus, { singleSelectOptionId: statusOptionId });
-# #               } else {
-# #                 console.warn(`Warning: Could not map status ${prState} for PR #${prId}`);
-# #               }
+# #               if (statusOptionId) await updateField(FIELD_IDS.prStatus, { singleSelectOptionId: statusOptionId });
 
-# #               console.log(`Successfully synced PR #${pr.number} to Project V2.`);
+# #               // NEW FIELDS UPDATE
+# #               await updateField(FIELD_IDS.prAuthor, { text: String(pr.author?.login || "Unknown") });
+# #               // Date fields require 'YYYY-MM-DD' format, so we slice the ISO string
+# #               await updateField(FIELD_IDS.prCreatedDate, { date: pr.createdAt.substring(0, 10) });
+# #               await updateField(FIELD_IDS.tiDefects, { number: Number(tiDefectsCount || 0) });
+# #               await updateField(FIELD_IDS.prChecklist, { singleSelectOptionId: checklistOptionId });
+
+# #               console.log(`Successfully synced PR #${pr.number}`);
 # #             }
 
-# # # =================================================================================================
 # # # name: "PR Metrics to Project V2 Sync"
 
 # # # on:
 # # #   workflow_dispatch:
+# # #     inputs:
+# # #       start_date:
+# # #         description: 'Start Date (YYYY-MM-DD)'
+# # #         required: false
+# # #         type: string
+# # #       end_date:
+# # #         description: 'End Date (YYYY-MM-DD)'
+# # #         required: false
+# # #         type: string
 # # #   schedule:
 # # #     # Runs every night at midnight UTC
 # # #     - cron: '0 0 * * *'
@@ -880,41 +989,63 @@ jobs:
 # # #             const PROJECT_ID = "PVT_kwHOCbDnFc4Be6cg"; 
 
 # # #             const FIELD_IDS = {
-# # #               jiraItems:      "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",      // Text
+# # #               jiraItems:      "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
 # # #               taskType:       "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
-# # #               prId:           "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",           // Number
-# # #               prTitle:        "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",        // Text
-# # #               prDesc:         "PVTF_lAHOCbDnFc4Be6cgzhZRMx4",         // Text
-# # #               reviewComments: "PVTF_lAHOCbDnFc4Be6cgzhZRM20", // Number
-# # #               botComments:    "PVTF_lAHOCbDnFc4Be6cgzhZRnTo",    // Number
-# # #               prDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZRgsw"       // Number
+# # #               prId:           "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",       // Number
+# # #               prTitle:        "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",       // Text
+# # #               prDesc:         "PVTF_lAHOCbDnFc4Be6cgzhZRMx4",       // Text
+# # #               reviewComments: "PVTF_lAHOCbDnFc4Be6cgzhZRM20",       // Number
+# # #               botComments:    "PVTF_lAHOCbDnFc4Be6cgzhZRnTo",       // Number
+# # #               prDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZRgsw",       // Number
+# # #               dateRange:      "PVTF_lAHOCbDnFc4Be6cgzhZVWCo",       // NEW: Text
+# # #               prStatus:       "PVTSSF_lAHOCbDnFc4Be6cgzhZVWwU"        // NEW: Single Select
+# # #             };
+
+# # #             // NEW: Replace with the Option IDs you got from the extractor workflow
+# # #             const STATUS_OPTIONS = {
+# # #               OPEN:   "a169abfa", 
+# # #               MERGED: "c29cb3fa", 
+# # #               CLOSED: "e18667b6"  
 # # #             };
 # # #             // =========================================================================
 
-# # #             // GraphQL Query: Fetch PR details across OPEN, MERGED, and CLOSED states
+# # #             // 1. Handle Date Logic
+# # #             let startDate = context.payload.inputs?.start_date;
+# # #             let endDate = context.payload.inputs?.end_date;
+
+# # #             // If triggered by schedule (or user left inputs blank), default to the last 7 days
+# # #             if (!startDate || !endDate) {
+# # #               const today = new Date();
+# # #               const sevenDaysAgo = new Date();
+# # #               sevenDaysAgo.setDate(today.getDate() - 7);
+              
+# # #               endDate = today.toISOString().split('T')[0];
+# # #               startDate = sevenDaysAgo.toISOString().split('T')[0];
+# # #               console.log(`No dates provided. Defaulting to last 7 days: ${startDate} to ${endDate}`);
+# # #             }
+
+# # #             const dateRangeText = `${startDate}_to_${endDate}`;
+# # #             const searchQuery = `repo:${context.repo.owner}/${context.repo.repo} is:pr created:${startDate}..${endDate}`;
+# # #             console.log(`Executing Search Query: ${searchQuery}`);
+
+# # #             // 2. Updated GraphQL Query (Using Search API instead of fetching all PRs)
 # # #             const query = `
-# # #               query($owner: String!, $repo: String!) {
-# # #                 repository(owner: $owner, name: $repo) {
-# # #                   pullRequests(
-# # #                     states: [OPEN, MERGED, CLOSED], 
-# # #                     first: 50, 
-# # #                     orderBy: {field: UPDATED_AT, direction: DESC}
-# # #                   ) {
-# # #                     nodes {
-# # #                       id # GraphQL Node ID needed to link item to Project V2
+# # #               query($searchQuery: String!) {
+# # #                 search(query: $searchQuery, type: ISSUE, first: 100) {
+# # #                   nodes {
+# # #                     ... on PullRequest {
+# # #                       id
 # # #                       number
 # # #                       title
 # # #                       body
+# # #                       state # Returns OPEN, MERGED, or CLOSED
 # # #                       headRefName
                       
-# # #                       # (b) PR Labels
 # # #                       labels(first: 10) {
 # # #                         nodes {
 # # #                           name
 # # #                         }
 # # #                       }
-
-# # #                       # (d) Top-Level Discussion Comments
 # # #                       comments(first: 100) {
 # # #                         nodes {
 # # #                           body
@@ -924,8 +1055,6 @@ jobs:
 # # #                           }
 # # #                         }
 # # #                       }
-
-# # #                       # (d) Inline Code Review Comments (Root Threads Only)
 # # #                       reviewThreads(first: 100) {
 # # #                         nodes {
 # # #                           comments(first: 1) {
@@ -945,18 +1074,21 @@ jobs:
 # # #               }
 # # #             `;
 
-# # #             const variables = { owner: context.repo.owner, repo: context.repo.repo };
+# # #             const variables = { searchQuery: searchQuery };
 # # #             const result = await github.graphql(query, variables);
-# # #             const pullRequests = result.repository.pullRequests.nodes;
+# # #             const pullRequests = result.search.nodes;
+
+# # #             if (pullRequests.length === 0) {
+# # #               console.log(`No PRs found created between ${startDate} and ${endDate}. Exiting.`);
+# # #               return;
+# # #             }
 
 # # #             const defectRegex = /(?:PR\s*)?Defects?:\s*(\d+)/i;
 
 # # #             const addItemMutation = `
 # # #               mutation($projectId: ID!, $contentId: ID!) {
 # # #                 addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
-# # #                   item {
-# # #                     id
-# # #                   }
+# # #                   item { id }
 # # #                 }
 # # #               }
 # # #             `;
@@ -971,30 +1103,33 @@ jobs:
 # # #                     value: $value
 # # #                   }
 # # #                 ) {
-# # #                   projectV2Item {
-# # #                     id
-# # #                   }
+# # #                   projectV2Item { id }
 # # #                 }
 # # #               }
 # # #             `;
 
+# # #             // 3. Process the PRs
 # # #             for (const pr of pullRequests) {
+# # #               // Ensure we are only processing PR objects (safety check)
+# # #               if (!pr.number) continue; 
+              
 # # #               console.log(`Processing PR #${pr.number}: ${pr.title}`);
 
-# # #               // a) JIRA ID Extraction
+# # #               // JIRA ID Extraction
 # # #               const jiraMatch = pr.headRefName.match(/\d+/);
 # # #               const jiraId = jiraMatch ? jiraMatch[0] : 'N/A';
 
-# # #               // b) Task Type (Labels)
+# # #               // Task Type (Labels)
 # # #               const labels = pr.labels.nodes.map(l => l.name);
 # # #               const taskType = labels.length > 0 ? labels.join(', ') : 'Unlabeled';
 
-# # #               // c) PR Details
+# # #               // PR Details
 # # #               const prId = pr.number;
 # # #               const prTitle = pr.title;
 # # #               const prDesc = pr.body || 'No description provided';
+# # #               const prState = pr.state; // Will be 'OPEN', 'MERGED', or 'CLOSED'
 
-# # #               // d) Comment & Bot Counting
+# # #               // Comment & Bot Counting
 # # #               let reviewCommentsCount = 0;
 # # #               let botCommentsCount = 0;
 # # #               let prDefectsCount = 0;
@@ -1010,14 +1145,20 @@ jobs:
 # # #                   reviewCommentsCount++;
 # # #                 }
 
-# # #                 // e) PR Defects extraction
-# # #                 const defectMatch = body ? body.match(defectRegex) : null;
-# # #                 if (defectMatch) {
-# # #                   prDefectsCount += parseInt(defectMatch[1], 10);
+# # #                 if (body) {
+# # #                   // 1. Sanitize the markdown: Replace *, _, |, ~, ` and HTML tags with spaces
+# # #                   const cleanBody = body.replace(/[*_`~|]/g, ' ').replace(/<\/?[^>]+(>|$)/g, ' ');
+                  
+# # #                   // 2. Enhanced Regex: Handles spaces, colons, hyphens, or equals signs before the number
+# # #                   const defectRegex = /(?:PR\s*)?Defects?[\s:\-=]*(\d+)/i;
+                  
+# # #                   const defectMatch = cleanBody.match(defectRegex);
+# # #                   if (defectMatch) {
+# # #                     prDefectsCount = parseInt(defectMatch[1], 10);
+# # #                   }
 # # #                 }
 # # #               };
 
-# # #               // Process top-level and inline root comments
 # # #               pr.comments.nodes.forEach(c => processComment(c.body, c.author));
 # # #               pr.reviewThreads.nodes.forEach(thread => {
 # # #                 const rootComment = thread.comments.nodes[0];
@@ -1047,22 +1188,32 @@ jobs:
 # # #                 }
 # # #               };
 
-# # #               // Update Text Fields
+# # #               // Update Existing Fields
 # # #               await updateField(FIELD_IDS.jiraItems, { text: String(jiraId || "N/A") });
 # # #               await updateField(FIELD_IDS.taskType,  { text: String(taskType || "Unlabeled") });
 # # #               await updateField(FIELD_IDS.prTitle,   { text: String(prTitle || "No Title") });
 # # #               await updateField(FIELD_IDS.prDesc,    { text: String(prDesc || "No Description") });
-
-# # #               // Update Number Fields
 # # #               await updateField(FIELD_IDS.prId,           { number: Number(prId || 0) });
 # # #               await updateField(FIELD_IDS.reviewComments, { number: Number(reviewCommentsCount || 0) });
 # # #               await updateField(FIELD_IDS.botComments,    { number: Number(botCommentsCount || 0) });
 # # #               await updateField(FIELD_IDS.prDefects,      { number: Number(prDefectsCount || 0) });
 
+# # #               // NEW STEP 3: Update New Fields (Date Range and PR Status)
+# # #               await updateField(FIELD_IDS.dateRange, { text: dateRangeText });
+              
+# # #               // Map the GraphQL state (OPEN/MERGED/CLOSED) to your specific Option ID
+# # #               const statusOptionId = STATUS_OPTIONS[prState];
+# # #               if (statusOptionId) {
+# # #                 // Notice the syntax difference: singleSelectOptionId instead of text
+# # #                 await updateField(FIELD_IDS.prStatus, { singleSelectOptionId: statusOptionId });
+# # #               } else {
+# # #                 console.warn(`Warning: Could not map status ${prState} for PR #${prId}`);
+# # #               }
+
 # # #               console.log(`Successfully synced PR #${pr.number} to Project V2.`);
 # # #             }
 
-# # # # =========================================================================================================
+# # # # =================================================================================================
 # # # # name: "PR Metrics to Project V2 Sync"
 
 # # # # on:
@@ -1078,23 +1229,22 @@ jobs:
 # # # #       - name: Extract PR Metrics & Update Project V2
 # # # #         uses: actions/github-script@v7
 # # # #         with:
-# # # #           # Secret PAT created with 'project' scope
 # # # #           github-token: ${{ secrets.PROJECT_TOKEN }}
 # # # #           script: |
 # # # #             // =========================================================================
-# # # #             // CONFIGURATION: Replace these with the IDs from your Discovery Step output
+# # # #             // CONFIGURATION: Replace these with your exact Project V2 & Field IDs
 # # # #             // =========================================================================
-# # # #             const PROJECT_ID = "PVT_kwHOCbDnFc4Be6cg"; // Your Project V2 ID
+# # # #             const PROJECT_ID = "PVT_kwHOCbDnFc4Be6cg"; 
 
 # # # #             const FIELD_IDS = {
-# # # #               jiraItems:      "PVTF_lAHOCbDnFc4Be6cgzhZRL4U", // Field ID for 'JIRA Items'
-# # # #               taskType:       "PVTF_lAHOCbDnFc4Be6cgzhZRMEk", // Field ID for 'Task Type'
-# # # #               prId:           "PVTF_lAHOCbDnFc4Be6cgzhZRMQM", // Field ID for 'PR ID'
-# # # #               prTitle:        "PVTF_lAHOCbDnFc4Be6cgzhZRMpc", // Field ID for 'PR Title'
-# # # #               prDesc:         "PVTF_lAHOCbDnFc4Be6cgzhZRMx4", // Field ID for 'PR Desc'
-# # # #               reviewComments: "PVTF_lAHOCbDnFc4Be6cgzhZRM20", // Field ID for 'Review Comments'
-# # # #               botComments:    "PVTF_lAHOCbDnFc4Be6cgzhZRnTo", // Field ID for 'Bot Comments'
-# # # #               prDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZRgsw"  // Field ID for 'PR Defects'
+# # # #               jiraItems:      "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",      // Text
+# # # #               taskType:       "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
+# # # #               prId:           "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",           // Number
+# # # #               prTitle:        "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",        // Text
+# # # #               prDesc:         "PVTF_lAHOCbDnFc4Be6cgzhZRMx4",         // Text
+# # # #               reviewComments: "PVTF_lAHOCbDnFc4Be6cgzhZRM20", // Number
+# # # #               botComments:    "PVTF_lAHOCbDnFc4Be6cgzhZRnTo",    // Number
+# # # #               prDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZRgsw"       // Number
 # # # #             };
 # # # #             // =========================================================================
 
@@ -1158,6 +1308,33 @@ jobs:
 
 # # # #             const defectRegex = /(?:PR\s*)?Defects?:\s*(\d+)/i;
 
+# # # #             const addItemMutation = `
+# # # #               mutation($projectId: ID!, $contentId: ID!) {
+# # # #                 addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+# # # #                   item {
+# # # #                     id
+# # # #                   }
+# # # #                 }
+# # # #               }
+# # # #             `;
+
+# # # #             const updateFieldMutation = `
+# # # #               mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
+# # # #                 updateProjectV2ItemFieldValue(
+# # # #                   input: {
+# # # #                     projectId: $projectId,
+# # # #                     itemId: $itemId,
+# # # #                     fieldId: $fieldId,
+# # # #                     value: $value
+# # # #                   }
+# # # #                 ) {
+# # # #                   projectV2Item {
+# # # #                     id
+# # # #                   }
+# # # #                 }
+# # # #               }
+# # # #             `;
+
 # # # #             for (const pr of pullRequests) {
 # # # #               console.log(`Processing PR #${pr.number}: ${pr.title}`);
 
@@ -1204,19 +1381,7 @@ jobs:
 # # # #                 if (rootComment) processComment(rootComment.body, rootComment.author);
 # # # #               });
 
-# # # #               // -----------------------------------------------------------------
 # # # #               // STEP 1: Add PR to Project V2 (or fetch existing item ID)
-# # # #               // -----------------------------------------------------------------
-# # # #               const addItemMutation = `
-# # # #                 mutation($projectId: ID!, $contentId: ID!) {
-# # # #                   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
-# # # #                     item {
-# # # #                       id
-# # # #                     }
-# # # #                   }
-# # # #                 }
-# # # #               `;
-
 # # # #               const itemResult = await github.graphql(addItemMutation, {
 # # # #                 projectId: PROJECT_ID,
 # # # #                 contentId: pr.id
@@ -1224,47 +1389,239 @@ jobs:
 
 # # # #               const itemId = itemResult.addProjectV2ItemById.item.id;
 
-# # # #               // -----------------------------------------------------------------
-# # # #               // STEP 2: Update Custom Fields for this Row
-# # # #               // -----------------------------------------------------------------
-# # # #               const updateFieldMutation = `
-# # # #                 mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
-# # # #                   updateProjectV2ItemFieldValue(
-# # # #                     input: {
-# # # #                       projectId: $projectId,
-# # # #                       itemId: $itemId,
-# # # #                       fieldId: $fieldId,
-# # # #                       value: $value
-# # # #                     }
-# # # #                   ) {
-# # # #                     projectV2Item {
-# # # #                       id
-# # # #                     }
-# # # #                   }
-# # # #                 }
-# # # #               `;
-
-# # # #               // Helper function to update individual field values
+# # # #               // STEP 2: Update Custom Fields safely
 # # # #               const updateField = async (fieldId, value) => {
-# # # #                 await github.graphql(updateFieldMutation, {
-# # # #                   projectId: PROJECT_ID,
-# # # #                   itemId: itemId,
-# # # #                   fieldId: fieldId,
-# # # #                   value: value
-# # # #                 });
+# # # #                 if (!fieldId) return;
+# # # #                 try {
+# # # #                   await github.graphql(updateFieldMutation, {
+# # # #                     projectId: PROJECT_ID,
+# # # #                     itemId: itemId,
+# # # #                     fieldId: fieldId,
+# # # #                     value: value
+# # # #                   });
+# # # #                 } catch (error) {
+# # # #                   console.error(`Error updating field ID ${fieldId}:`, error.message);
+# # # #                 }
 # # # #               };
 
 # # # #               // Update Text Fields
-# # # #               await updateField(FIELD_IDS.jiraItems, { text: jiraId });
-# # # #               await updateField(FIELD_IDS.taskType,  { text: taskType });
-# # # #               await updateField(FIELD_IDS.prTitle,   { text: prTitle });
-# # # #               await updateField(FIELD_IDS.prDesc,    { text: prDesc });
+# # # #               await updateField(FIELD_IDS.jiraItems, { text: String(jiraId || "N/A") });
+# # # #               await updateField(FIELD_IDS.taskType,  { text: String(taskType || "Unlabeled") });
+# # # #               await updateField(FIELD_IDS.prTitle,   { text: String(prTitle || "No Title") });
+# # # #               await updateField(FIELD_IDS.prDesc,    { text: String(prDesc || "No Description") });
 
 # # # #               // Update Number Fields
-# # # #               await updateField(FIELD_IDS.prId,           { number: prId });
-# # # #               await updateField(FIELD_IDS.reviewComments, { number: reviewCommentsCount });
-# # # #               await updateField(FIELD_IDS.botComments,    { number: botCommentsCount });
-# # # #               await updateField(FIELD_IDS.prDefects,      { number: prDefectsCount });
+# # # #               await updateField(FIELD_IDS.prId,           { number: Number(prId || 0) });
+# # # #               await updateField(FIELD_IDS.reviewComments, { number: Number(reviewCommentsCount || 0) });
+# # # #               await updateField(FIELD_IDS.botComments,    { number: Number(botCommentsCount || 0) });
+# # # #               await updateField(FIELD_IDS.prDefects,      { number: Number(prDefectsCount || 0) });
 
-# # # #               console.log(`Successfully synced PR #${pr.number} to Project V2 dashboard.`);
+# # # #               console.log(`Successfully synced PR #${pr.number} to Project V2.`);
 # # # #             }
+
+# # # # # =========================================================================================================
+# # # # # name: "PR Metrics to Project V2 Sync"
+
+# # # # # on:
+# # # # #   workflow_dispatch:
+# # # # #   schedule:
+# # # # #     # Runs every night at midnight UTC
+# # # # #     - cron: '0 0 * * *'
+
+# # # # # jobs:
+# # # # #   sync-pr-metrics:
+# # # # #     runs-on: ubuntu-latest
+# # # # #     steps:
+# # # # #       - name: Extract PR Metrics & Update Project V2
+# # # # #         uses: actions/github-script@v7
+# # # # #         with:
+# # # # #           # Secret PAT created with 'project' scope
+# # # # #           github-token: ${{ secrets.PROJECT_TOKEN }}
+# # # # #           script: |
+# # # # #             // =========================================================================
+# # # # #             // CONFIGURATION: Replace these with the IDs from your Discovery Step output
+# # # # #             // =========================================================================
+# # # # #             const PROJECT_ID = "PVT_kwHOCbDnFc4Be6cg"; // Your Project V2 ID
+
+# # # # #             const FIELD_IDS = {
+# # # # #               jiraItems:      "PVTF_lAHOCbDnFc4Be6cgzhZRL4U", // Field ID for 'JIRA Items'
+# # # # #               taskType:       "PVTF_lAHOCbDnFc4Be6cgzhZRMEk", // Field ID for 'Task Type'
+# # # # #               prId:           "PVTF_lAHOCbDnFc4Be6cgzhZRMQM", // Field ID for 'PR ID'
+# # # # #               prTitle:        "PVTF_lAHOCbDnFc4Be6cgzhZRMpc", // Field ID for 'PR Title'
+# # # # #               prDesc:         "PVTF_lAHOCbDnFc4Be6cgzhZRMx4", // Field ID for 'PR Desc'
+# # # # #               reviewComments: "PVTF_lAHOCbDnFc4Be6cgzhZRM20", // Field ID for 'Review Comments'
+# # # # #               botComments:    "PVTF_lAHOCbDnFc4Be6cgzhZRnTo", // Field ID for 'Bot Comments'
+# # # # #               prDefects:      "PVTF_lAHOCbDnFc4Be6cgzhZRgsw"  // Field ID for 'PR Defects'
+# # # # #             };
+# # # # #             // =========================================================================
+
+# # # # #             // GraphQL Query: Fetch PR details across OPEN, MERGED, and CLOSED states
+# # # # #             const query = `
+# # # # #               query($owner: String!, $repo: String!) {
+# # # # #                 repository(owner: $owner, name: $repo) {
+# # # # #                   pullRequests(
+# # # # #                     states: [OPEN, MERGED, CLOSED], 
+# # # # #                     first: 50, 
+# # # # #                     orderBy: {field: UPDATED_AT, direction: DESC}
+# # # # #                   ) {
+# # # # #                     nodes {
+# # # # #                       id # GraphQL Node ID needed to link item to Project V2
+# # # # #                       number
+# # # # #                       title
+# # # # #                       body
+# # # # #                       headRefName
+                      
+# # # # #                       # (b) PR Labels
+# # # # #                       labels(first: 10) {
+# # # # #                         nodes {
+# # # # #                           name
+# # # # #                         }
+# # # # #                       }
+
+# # # # #                       # (d) Top-Level Discussion Comments
+# # # # #                       comments(first: 100) {
+# # # # #                         nodes {
+# # # # #                           body
+# # # # #                           author {
+# # # # #                             login
+# # # # #                             __typename
+# # # # #                           }
+# # # # #                         }
+# # # # #                       }
+
+# # # # #                       # (d) Inline Code Review Comments (Root Threads Only)
+# # # # #                       reviewThreads(first: 100) {
+# # # # #                         nodes {
+# # # # #                           comments(first: 1) {
+# # # # #                             nodes {
+# # # # #                               body
+# # # # #                               author {
+# # # # #                                 login
+# # # # #                                 __typename
+# # # # #                               }
+# # # # #                             }
+# # # # #                           }
+# # # # #                         }
+# # # # #                       }
+# # # # #                     }
+# # # # #                   }
+# # # # #                 }
+# # # # #               }
+# # # # #             `;
+
+# # # # #             const variables = { owner: context.repo.owner, repo: context.repo.repo };
+# # # # #             const result = await github.graphql(query, variables);
+# # # # #             const pullRequests = result.repository.pullRequests.nodes;
+
+# # # # #             const defectRegex = /(?:PR\s*)?Defects?:\s*(\d+)/i;
+
+# # # # #             for (const pr of pullRequests) {
+# # # # #               console.log(`Processing PR #${pr.number}: ${pr.title}`);
+
+# # # # #               // a) JIRA ID Extraction
+# # # # #               const jiraMatch = pr.headRefName.match(/\d+/);
+# # # # #               const jiraId = jiraMatch ? jiraMatch[0] : 'N/A';
+
+# # # # #               // b) Task Type (Labels)
+# # # # #               const labels = pr.labels.nodes.map(l => l.name);
+# # # # #               const taskType = labels.length > 0 ? labels.join(', ') : 'Unlabeled';
+
+# # # # #               // c) PR Details
+# # # # #               const prId = pr.number;
+# # # # #               const prTitle = pr.title;
+# # # # #               const prDesc = pr.body || 'No description provided';
+
+# # # # #               // d) Comment & Bot Counting
+# # # # #               let reviewCommentsCount = 0;
+# # # # #               let botCommentsCount = 0;
+# # # # #               let prDefectsCount = 0;
+
+# # # # #               const processComment = (body, author) => {
+# # # # #                 const isBot = author 
+# # # # #                   ? (author.__typename === 'Bot' || author.login.endsWith('[bot]')) 
+# # # # #                   : false;
+
+# # # # #                 if (isBot) {
+# # # # #                   botCommentsCount++;
+# # # # #                 } else {
+# # # # #                   reviewCommentsCount++;
+# # # # #                 }
+
+# # # # #                 // e) PR Defects extraction
+# # # # #                 const defectMatch = body ? body.match(defectRegex) : null;
+# # # # #                 if (defectMatch) {
+# # # # #                   prDefectsCount += parseInt(defectMatch[1], 10);
+# # # # #                 }
+# # # # #               };
+
+# # # # #               // Process top-level and inline root comments
+# # # # #               pr.comments.nodes.forEach(c => processComment(c.body, c.author));
+# # # # #               pr.reviewThreads.nodes.forEach(thread => {
+# # # # #                 const rootComment = thread.comments.nodes[0];
+# # # # #                 if (rootComment) processComment(rootComment.body, rootComment.author);
+# # # # #               });
+
+# # # # #               // -----------------------------------------------------------------
+# # # # #               // STEP 1: Add PR to Project V2 (or fetch existing item ID)
+# # # # #               // -----------------------------------------------------------------
+# # # # #               const addItemMutation = `
+# # # # #                 mutation($projectId: ID!, $contentId: ID!) {
+# # # # #                   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+# # # # #                     item {
+# # # # #                       id
+# # # # #                     }
+# # # # #                   }
+# # # # #                 }
+# # # # #               `;
+
+# # # # #               const itemResult = await github.graphql(addItemMutation, {
+# # # # #                 projectId: PROJECT_ID,
+# # # # #                 contentId: pr.id
+# # # # #               });
+
+# # # # #               const itemId = itemResult.addProjectV2ItemById.item.id;
+
+# # # # #               // -----------------------------------------------------------------
+# # # # #               // STEP 2: Update Custom Fields for this Row
+# # # # #               // -----------------------------------------------------------------
+# # # # #               const updateFieldMutation = `
+# # # # #                 mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
+# # # # #                   updateProjectV2ItemFieldValue(
+# # # # #                     input: {
+# # # # #                       projectId: $projectId,
+# # # # #                       itemId: $itemId,
+# # # # #                       fieldId: $fieldId,
+# # # # #                       value: $value
+# # # # #                     }
+# # # # #                   ) {
+# # # # #                     projectV2Item {
+# # # # #                       id
+# # # # #                     }
+# # # # #                   }
+# # # # #                 }
+# # # # #               `;
+
+# # # # #               // Helper function to update individual field values
+# # # # #               const updateField = async (fieldId, value) => {
+# # # # #                 await github.graphql(updateFieldMutation, {
+# # # # #                   projectId: PROJECT_ID,
+# # # # #                   itemId: itemId,
+# # # # #                   fieldId: fieldId,
+# # # # #                   value: value
+# # # # #                 });
+# # # # #               };
+
+# # # # #               // Update Text Fields
+# # # # #               await updateField(FIELD_IDS.jiraItems, { text: jiraId });
+# # # # #               await updateField(FIELD_IDS.taskType,  { text: taskType });
+# # # # #               await updateField(FIELD_IDS.prTitle,   { text: prTitle });
+# # # # #               await updateField(FIELD_IDS.prDesc,    { text: prDesc });
+
+# # # # #               // Update Number Fields
+# # # # #               await updateField(FIELD_IDS.prId,           { number: prId });
+# # # # #               await updateField(FIELD_IDS.reviewComments, { number: reviewCommentsCount });
+# # # # #               await updateField(FIELD_IDS.botComments,    { number: botCommentsCount });
+# # # # #               await updateField(FIELD_IDS.prDefects,      { number: prDefectsCount });
+
+# # # # #               console.log(`Successfully synced PR #${pr.number} to Project V2 dashboard.`);
+# # # # #             }
