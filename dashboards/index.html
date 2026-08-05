@@ -114,6 +114,8 @@
             <th class="p-3">Author</th>
             <th class="p-3">Created Date</th>
             <th class="p-3">Status</th>
+            <th class="p-3 text-center">Human Reviews</th>
+            <th class="p-3 text-center">Copilot Reviews</th>
             <th class="p-3 text-center">TI Defects</th>
             <th class="p-3 text-center">Major</th>
             <th class="p-3 text-center">Minor</th>
@@ -229,7 +231,7 @@
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#9ca3af', font: { size: 10 } } } } }
       });
 
-      // 2. Bar Chart: Major vs Minor by Status
+      // 2. Bar Chart: Major vs Minor by Status (Fixed with Whole Integer Y-Axis)
       const statuses = ['OPEN', 'MERGED', 'CLOSED'];
       const majorByStatus = statuses.map(s => data.filter(p => p.prStatus === s).reduce((a, p) => a + (p.major || 0), 0));
       const minorByStatus = statuses.map(s => data.filter(p => p.prStatus === s).reduce((a, p) => a + (p.minor || 0), 0));
@@ -251,7 +253,14 @@
           maintainAspectRatio: false,
           scales: {
             x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
-            y: { beginAtZero: true, ticks: { color: '#9ca3af',  precision: 0}, grid: { color: '#374151' } }
+            y: { 
+              beginAtZero: true,
+              ticks: { 
+                color: '#9ca3af',
+                precision: 0 // Forces whole integer values on Y-axis (no decimals!)
+              }, 
+              grid: { color: '#374151' } 
+            }
           },
           plugins: { legend: { labels: { color: '#9ca3af' } } }
         }
@@ -273,6 +282,8 @@
           <td class="p-3 text-gray-400">@${pr.prAuthor}</td>
           <td class="p-3 text-gray-400">${pr.prCreatedDate}</td>
           <td class="p-3"><span class="px-2 py-1 rounded text-xs font-semibold ${pr.prStatus === 'OPEN' ? 'bg-yellow-900 text-yellow-300' : pr.prStatus === 'MERGED' ? 'bg-purple-900 text-purple-300' : 'bg-gray-700 text-gray-300'}">${pr.prStatus}</span></td>
+          <td class="p-3 text-center font-bold text-gray-300">${pr.reviewComments}</td>
+          <td class="p-3 text-center font-bold text-cyan-400">${pr.copilotComments || 0}</td>
           <td class="p-3 text-center font-bold text-red-400">${pr.tiDefects}</td>
           <td class="p-3 text-center text-orange-400">${pr.major}</td>
           <td class="p-3 text-center text-yellow-400">${pr.minor}</td>
