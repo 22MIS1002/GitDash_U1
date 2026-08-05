@@ -41,7 +41,7 @@ jobs:
 
             const FIELD_IDS = {
               jiraItems:            "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
-              taskType:             "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
+              taskType:             "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
               prId:                 "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",       // Number
               prTitle:              "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",       // Text
               reviewComments:       "PVTF_lAHOCbDnFc4Be6cgzhZRM20",       // Number
@@ -50,9 +50,9 @@ jobs:
               prStatus:             "PVTSSF_lAHOCbDnFc4Be6cgzhZVWwU",       // Single Select
               prCreatedDate:        "PVTF_lAHOCbDnFc4Be6cgzhZjmIo",       // Date
               prAuthor:             "PVTF_lAHOCbDnFc4Be6cgzhZjmMA",       // Text
-              tiDefects:            "PVTF_lAHOCbDnFc4Be6cgzhZjmTE",       // Number ([DEFECT])
+              tiDefects:            "PVTF_lAHOCbDnFc4Be6cgzhZjmTE",       // Number
               prChecklist:          "PVTSSF_lAHOCbDnFc4Be6cgzhZjmZM",       // Single Select
-              copilotComments:      "PVTF_lAHOCbDnFc4Be6cgzhZuiFc",       // Number (Copilot Reviews)
+              copilotComments:      "PVTF_lAHOCbDnFc4Be6cgzhZuiFc",       // Number
 
               // 13 Sub-Category Number Fields
               questions:            "PVTF_lAHOCbDnFc4Be6cgzhZk_vY",       // Number
@@ -98,8 +98,26 @@ jobs:
             };
             // =========================================================================
 
-            // 1. Determine Search Query
+            // 1. Load existing metrics from live Pages site to prevent wiping data
+            const existingPrsMap = new Map();
             const isManualFullSync = context.payload.inputs?.fetch_all_historical === 'true';
+
+            if (!isManualFullSync) {
+              try {
+                const pagesUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}/metrics.json`;
+                console.log(`Attempting to load live metrics from: ${pagesUrl}`);
+                const response = await fetch(pagesUrl);
+                if (response.ok) {
+                  const liveData = await response.json();
+                  (liveData.prs || []).forEach(p => existingPrsMap.set(p.prId, p));
+                  console.log(`Loaded ${existingPrsMap.size} existing PRs from live Pages dashboard.`);
+                }
+              } catch (err) {
+                console.log("No live metrics.json found on Pages or error fetching. Starting fresh.");
+              }
+            }
+
+            // 2. Determine Search Query
             let searchQuery = `repo:${context.repo.owner}/${context.repo.repo} is:pr`;
 
             if (isManualFullSync) {
@@ -110,7 +128,7 @@ jobs:
               console.log(`Incremental Sync: Fetching PRs updated since ${yesterday}`);
             }
 
-            // 2. GraphQL Query
+            // 3. GraphQL Query
             const query = `
               query($searchQuery: String!, $cursor: String) {
                 search(query: $searchQuery, type: ISSUE, first: 100, after: $cursor) {
@@ -167,7 +185,7 @@ jobs:
               }
             `;
 
-            // 3. Fetch Data with Pagination
+            // 4. Fetch Data with Pagination
             let pullRequests = [];
             let hasNextPage = true;
             let cursor = null;
@@ -180,7 +198,7 @@ jobs:
               cursor = result.search.pageInfo.endCursor;
             }
 
-            console.log(`Found ${pullRequests.length} PR(s) to process.`);
+            console.log(`Found ${pullRequests.length} updated PR(s) to process.`);
 
             const addItemMutation = `
               mutation($projectId: ID!, $contentId: ID!) {
@@ -198,9 +216,7 @@ jobs:
               }
             `;
 
-            const prsJsonArray = [];
-
-            // 4. Process PRs
+            // 5. Process PRs and merge into existingPrsMap
             for (const pr of pullRequests) {
               if (!pr.number) continue; 
               
@@ -243,24 +259,21 @@ jobs:
               // Process Standard Comments
               pr.comments.nodes.forEach(c => processComment(c.body, c.author));
               
-              // Process Inline Review Comments (Bulletproof Check)
+              // Process Inline Review Comments
               pr.reviewThreads.nodes.forEach(thread => {
                 const rootComment = thread.comments.nodes[0];
                 if (rootComment && rootComment.body && rootComment.author) {
                   processComment(rootComment.body, rootComment.author);
                   
-                  // Check strictly if author is Copilot
                   const authorLogin = rootComment.author.login ? rootComment.author.login.toLowerCase() : '';
                   if (authorLogin.includes('copilot')) {
                     copilotCommentsCount++;
                   }
 
-                  // Check for **[Defect]**
                   if (rootComment.body.match(/\*\*\[Defect\]\*\*/i)) {
                     tiDefectsCount++;
                   }
 
-                  // Check for all 13 Sub-Category Labels
                   for (const [key, pattern] of Object.entries(LABEL_PATTERNS)) {
                     if (rootComment.body.match(pattern)) {
                       subCategoryCounts[key]++;
@@ -324,8 +337,8 @@ jobs:
                 console.error(`Project V2 update warning for PR #${pr.number}:`, projErr.message);
               }
 
-              // TARGET B: Construct Object for dashboards/metrics.json
-              prsJsonArray.push({
+              // TARGET B: Update or Insert into Map for dashboards/metrics.json
+              existingPrsMap.set(pr.number, {
                 prId: pr.number,
                 jiraItem: jiraId,
                 prTitle: pr.title,
@@ -342,18 +355,18 @@ jobs:
               });
             }
 
-            // 5. Write metrics.json into ./dashboards directory
+            // 6. Write combined metrics.json into ./dashboards directory
             if (!fs.existsSync('./dashboards')) {
               fs.mkdirSync('./dashboards');
             }
 
             const jsonPayload = {
               lastUpdated: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
-              prs: prsJsonArray
+              prs: Array.from(existingPrsMap.values())
             };
 
             fs.writeFileSync('./dashboards/metrics.json', JSON.stringify(jsonPayload, null, 2));
-            console.log("Successfully generated ./dashboards/metrics.json!");
+            console.log(`Successfully generated ./dashboards/metrics.json with ${jsonPayload.prs.length} total PRs!`);
 
       # Step 3: Package the dashboards/ directory for GitHub Pages
       - name: Upload GitHub Pages Artifact
@@ -366,6 +379,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 # name: "PR Metrics to Project V2 & Pages Sync"
 
 # on:
