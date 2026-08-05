@@ -123,7 +123,7 @@
           </tr>
         </thead>
         <tbody id="pr-table-body" class="divide-y divide-gray-700">
-          <!-- Rows inserted via JS -->
+          <!-- Rows inserted safely via JS -->
         </tbody>
       </table>
     </div>
@@ -135,13 +135,26 @@
     let chartClassificationsInstance = null;
     let chartSeverityInstance = null;
 
+    // =========================================================================
+    // SECURITY HELPER: Sanitizes dynamic strings to prevent Stored XSS
+    // =========================================================================
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     async function loadMetrics() {
       try {
         const response = await fetch('./metrics.json?t=' + new Date().getTime());
         const data = await response.json();
         rawPrsData = data.prs || [];
         
-        document.getElementById('last-updated').innerText = `Last Updated: ${data.lastUpdated || 'N/A'}`;
+        document.getElementById('last-updated').innerText = `Last Updated: ${escapeHTML(data.lastUpdated || 'N/A')}`;
         
         populateAuthorDropdown();
         applyFiltersAndRender();
@@ -153,11 +166,13 @@
 
     function populateAuthorDropdown() {
       const authorSelect = document.getElementById('filter-author');
+      authorSelect.innerHTML = '<option value="ALL">All Authors</option>'; // Clear previous options safely
+      
       const authors = [...new Set(rawPrsData.map(pr => pr.prAuthor).filter(Boolean))];
       authors.forEach(auth => {
         const opt = document.createElement('option');
-        opt.value = auth;
-        opt.textContent = auth;
+        opt.value = auth;       // Standard property assignment (safe)
+        opt.textContent = auth; // Plain text assignment prevents HTML parsing (safe)
         authorSelect.appendChild(opt);
       });
     }
@@ -174,7 +189,7 @@
         if (endDate && pr.prCreatedDate > endDate) return false;
         if (author !== 'ALL' && pr.prAuthor !== author) return false;
         if (status !== 'ALL' && pr.prStatus !== status) return false;
-        if (search && !pr.prTitle.toLowerCase().includes(search) && !pr.jiraItem.toLowerCase().includes(search)) return false;
+        if (search && !String(pr.prTitle || '').toLowerCase().includes(search) && !String(pr.jiraItem || '').toLowerCase().includes(search)) return false;
         return true;
       });
 
@@ -185,9 +200,9 @@
 
     function renderKPIs(data) {
       document.getElementById('kpi-total-prs').innerText = data.length;
-      const totalTI = data.reduce((acc, pr) => acc + (pr.tiDefects || 0), 0);
-      const totalMajor = data.reduce((acc, pr) => acc + (pr.major || 0), 0);
-      const totalMinor = data.reduce((acc, pr) => acc + (pr.minor || 0), 0);
+      const totalTI = data.reduce((acc, pr) => acc + (Number(pr.tiDefects) || 0), 0);
+      const totalMajor = data.reduce((acc, pr) => acc + (Number(pr.major) || 0), 0);
+      const totalMinor = data.reduce((acc, pr) => acc + (Number(pr.minor) || 0), 0);
       const withChecklist = data.filter(pr => pr.prChecklist === 'YES').length;
       const compliance = data.length > 0 ? Math.round((withChecklist / data.length) * 100) : 0;
 
@@ -200,17 +215,17 @@
     function renderCharts(data) {
       // 1. Pie Chart: 13 Classifications
       const classifications = {
-        'Missing': data.reduce((a, p) => a + (p.missing || 0), 0),
-        'Extra/Superfluous': data.reduce((a, p) => a + (p.extraSuperfluous || 0), 0),
-        'Ambiguous': data.reduce((a, p) => a + (p.ambiguous || 0), 0),
-        'Inconsistent': data.reduce((a, p) => a + (p.inconsistent || 0), 0),
-        'Improvement Desirable': data.reduce((a, p) => a + (p.improvementDesirable || 0), 0),
-        'Not Conforming': data.reduce((a, p) => a + (p.notConforming || 0), 0),
-        'Risk-Prone': data.reduce((a, p) => a + (p.riskProne || 0), 0),
-        'Factually Incorrect': data.reduce((a, p) => a + (p.factuallyIncorrect || 0), 0),
-        'Not Implementable': data.reduce((a, p) => a + (p.notImplementable || 0), 0),
-        'Editorial': data.reduce((a, p) => a + (p.editorial || 0), 0),
-        'Questions': data.reduce((a, p) => a + (p.questions || 0), 0)
+        'Missing': data.reduce((a, p) => a + (Number(p.missing) || 0), 0),
+        'Extra/Superfluous': data.reduce((a, p) => a + (Number(p.extraSuperfluous) || 0), 0),
+        'Ambiguous': data.reduce((a, p) => a + (Number(p.ambiguous) || 0), 0),
+        'Inconsistent': data.reduce((a, p) => a + (Number(p.inconsistent) || 0), 0),
+        'Improvement Desirable': data.reduce((a, p) => a + (Number(p.improvementDesirable) || 0), 0),
+        'Not Conforming': data.reduce((a, p) => a + (Number(p.notConforming) || 0), 0),
+        'Risk-Prone': data.reduce((a, p) => a + (Number(p.riskProne) || 0), 0),
+        'Factually Incorrect': data.reduce((a, p) => a + (Number(p.factuallyIncorrect) || 0), 0),
+        'Not Implementable': data.reduce((a, p) => a + (Number(p.notImplementable) || 0), 0),
+        'Editorial': data.reduce((a, p) => a + (Number(p.editorial) || 0), 0),
+        'Questions': data.reduce((a, p) => a + (Number(p.questions) || 0), 0)
       };
 
       const pieCtx = document.getElementById('chart-classifications').getContext('2d');
@@ -233,8 +248,8 @@
 
       // 2. Bar Chart: Major vs Minor by Status (Fixed with Whole Integer Y-Axis)
       const statuses = ['OPEN', 'MERGED', 'CLOSED'];
-      const majorByStatus = statuses.map(s => data.filter(p => p.prStatus === s).reduce((a, p) => a + (p.major || 0), 0));
-      const minorByStatus = statuses.map(s => data.filter(p => p.prStatus === s).reduce((a, p) => a + (p.minor || 0), 0));
+      const majorByStatus = statuses.map(s => data.filter(p => p.prStatus === s).reduce((a, p) => a + (Number(p.major) || 0), 0));
+      const minorByStatus = statuses.map(s => data.filter(p => p.prStatus === s).reduce((a, p) => a + (Number(p.minor) || 0), 0));
 
       const barCtx = document.getElementById('chart-severity').getContext('2d');
       if (chartSeverityInstance) chartSeverityInstance.destroy();
@@ -275,19 +290,36 @@
       data.forEach(pr => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-gray-750 transition";
+
+        // Sanitize dynamic string values before HTML interpolation
+        const safePrId = escapeHTML(pr.prId);
+        const safeJira = escapeHTML(pr.jiraItem);
+        const safeTitle = escapeHTML(pr.prTitle);
+        const safeAuthor = escapeHTML(pr.prAuthor);
+        const safeCreatedDate = escapeHTML(pr.prCreatedDate);
+        const safeStatus = escapeHTML(pr.prStatus);
+        
+        // Ensure numeric fields are coerced to safe numbers
+        const safeReviewComments = Number(pr.reviewComments) || 0;
+        const safeCopilotComments = Number(pr.copilotComments) || 0;
+        const safeTiDefects = Number(pr.tiDefects) || 0;
+        const safeMajor = Number(pr.major) || 0;
+        const safeMinor = Number(pr.minor) || 0;
+        const safeChecklist = pr.prChecklist === 'YES' ? '🟢' : '🔴';
+
         tr.innerHTML = `
-          <td class="p-3 font-mono text-blue-400">#${pr.prId}</td>
-          <td class="p-3 font-semibold text-gray-300">${pr.jiraItem}</td>
-          <td class="p-3 truncate max-w-xs" title="${pr.prTitle}">${pr.prTitle}</td>
-          <td class="p-3 text-gray-400">@${pr.prAuthor}</td>
-          <td class="p-3 text-gray-400">${pr.prCreatedDate}</td>
-          <td class="p-3"><span class="px-2 py-1 rounded text-xs font-semibold ${pr.prStatus === 'OPEN' ? 'bg-yellow-900 text-yellow-300' : pr.prStatus === 'MERGED' ? 'bg-purple-900 text-purple-300' : 'bg-gray-700 text-gray-300'}">${pr.prStatus}</span></td>
-          <td class="p-3 text-center font-bold text-gray-300">${pr.reviewComments}</td>
-          <td class="p-3 text-center font-bold text-cyan-400">${pr.copilotComments || 0}</td>
-          <td class="p-3 text-center font-bold text-red-400">${pr.tiDefects}</td>
-          <td class="p-3 text-center text-orange-400">${pr.major}</td>
-          <td class="p-3 text-center text-yellow-400">${pr.minor}</td>
-          <td class="p-3 text-center">${pr.prChecklist === 'YES' ? '🟢' : '🔴'}</td>
+          <td class="p-3 font-mono text-blue-400">#${safePrId}</td>
+          <td class="p-3 font-semibold text-gray-300">${safeJira}</td>
+          <td class="p-3 truncate max-w-xs" title="${safeTitle}">${safeTitle}</td>
+          <td class="p-3 text-gray-400">@${safeAuthor}</td>
+          <td class="p-3 text-gray-400">${safeCreatedDate}</td>
+          <td class="p-3"><span class="px-2 py-1 rounded text-xs font-semibold ${safeStatus === 'OPEN' ? 'bg-yellow-900 text-yellow-300' : safeStatus === 'MERGED' ? 'bg-purple-900 text-purple-300' : 'bg-gray-700 text-gray-300'}">${safeStatus}</span></td>
+          <td class="p-3 text-center font-bold text-gray-300">${safeReviewComments}</td>
+          <td class="p-3 text-center font-bold text-cyan-400">${safeCopilotComments}</td>
+          <td class="p-3 text-center font-bold text-red-400">${safeTiDefects}</td>
+          <td class="p-3 text-center text-orange-400">${safeMajor}</td>
+          <td class="p-3 text-center text-yellow-400">${safeMinor}</td>
+          <td class="p-3 text-center">${safeChecklist}</td>
         `;
         tbody.appendChild(tr);
       });
