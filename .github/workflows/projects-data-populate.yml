@@ -22,11 +22,20 @@ jobs:
   sync-pr-metrics:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout the repo so ./dashboards/index.html is available
+      # Step 1: Checkout the repo
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Extract PR Data, Update Project V2, and Generate dashboards/metrics.json
+      # Step 2: Restore Cached metrics.json from previous workflow run
+      - name: Restore Cached metrics.json
+        uses: actions/cache/restore@v4
+        with:
+          path: ./dashboards/metrics.json
+          key: metrics-json-${{ github.run_id }}
+          restore-keys: |
+            metrics-json-
+
+      # Step 3: Extract PR Data, Update Project V2, and Merge JSON
       - name: Extract PR Metrics & Update Project V2 & JSON
         uses: actions/github-script@v7
         with:
@@ -41,7 +50,7 @@ jobs:
 
             const FIELD_IDS = {
               jiraItems:            "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
-              taskType:             "PVTF_lAHOCbDnFc4Be6cgzhZRL4U",       // Text
+              taskType:             "PVTF_lAHOCbDnFc4Be6cgzhZRMEk",       // Text
               prId:                 "PVTF_lAHOCbDnFc4Be6cgzhZRMQM",       // Number
               prTitle:              "PVTF_lAHOCbDnFc4Be6cgzhZRMpc",       // Text
               reviewComments:       "PVTF_lAHOCbDnFc4Be6cgzhZRM20",       // Number
@@ -98,22 +107,39 @@ jobs:
             };
             // =========================================================================
 
-            // 1. Load existing metrics from live Pages site to prevent wiping data
             const existingPrsMap = new Map();
             const isManualFullSync = context.payload.inputs?.fetch_all_historical === 'true';
 
+            // 1. Load existing metrics from Local Restored Cache OR Live URL
             if (!isManualFullSync) {
-              try {
-                const pagesUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}/metrics.json`;
-                console.log(`Attempting to load live metrics from: ${pagesUrl}`);
-                const response = await fetch(pagesUrl);
-                if (response.ok) {
-                  const liveData = await response.json();
-                  (liveData.prs || []).forEach(p => existingPrsMap.set(p.prId, p));
-                  console.log(`Loaded ${existingPrsMap.size} existing PRs from live Pages dashboard.`);
+              // Priority A: Check if restored from GitHub Actions Cache
+              if (fs.existsSync('./dashboards/metrics.json')) {
+                try {
+                  const localContent = fs.readFileSync('./dashboards/metrics.json', 'utf8');
+                  const localData = JSON.parse(localContent);
+                  (localData.prs || []).forEach(p => existingPrsMap.set(p.prId, p));
+                  console.log(`Loaded ${existingPrsMap.size} existing PRs from restored Actions Cache.`);
+                } catch (e) {
+                  console.log("Failed to parse local cached metrics.json file.");
                 }
-              } catch (err) {
-                console.log("No live metrics.json found on Pages or error fetching. Starting fresh.");
+              }
+
+              // Priority B: Fallback to live URL if local cache was empty
+              if (existingPrsMap.size === 0) {
+                try {
+                  const owner = context.repo.owner.toLowerCase();
+                  const repo = context.repo.repo;
+                  const pagesUrl = `https://${owner}.github.io/${repo}/metrics.json`;
+                  console.log(`Attempting fallback fetch from live Pages URL: ${pagesUrl}`);
+                  const response = await fetch(pagesUrl);
+                  if (response.ok) {
+                    const liveData = await response.json();
+                    (liveData.prs || []).forEach(p => existingPrsMap.set(p.prId, p));
+                    console.log(`Loaded ${existingPrsMap.size} existing PRs from live Pages URL.`);
+                  }
+                } catch (err) {
+                  console.log("No live metrics.json found on Pages. Starting fresh.");
+                }
               }
             }
 
@@ -259,7 +285,7 @@ jobs:
               // Process Standard Comments
               pr.comments.nodes.forEach(c => processComment(c.body, c.author));
               
-              // Process Inline Review Comments
+              // Process Inline Review Comments (Bulletproof check)
               pr.reviewThreads.nodes.forEach(thread => {
                 const rootComment = thread.comments.nodes[0];
                 if (rootComment && rootComment.body && rootComment.author) {
@@ -368,13 +394,21 @@ jobs:
             fs.writeFileSync('./dashboards/metrics.json', JSON.stringify(jsonPayload, null, 2));
             console.log(`Successfully generated ./dashboards/metrics.json with ${jsonPayload.prs.length} total PRs!`);
 
-      # Step 3: Package the dashboards/ directory for GitHub Pages
+      # Step 4: Save Updated metrics.json to Actions Cache for future runs
+      - name: Save Cached metrics.json
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ./dashboards/metrics.json
+          key: metrics-json-${{ github.run_id }}
+
+      # Step 5: Package the dashboards/ directory for GitHub Pages
       - name: Upload GitHub Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dashboards'
 
-      # Step 4: Deploy Artifact to GitHub Pages CDN
+      # Step 6: Deploy Artifact to GitHub Pages CDN
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
